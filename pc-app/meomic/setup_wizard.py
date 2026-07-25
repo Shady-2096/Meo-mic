@@ -10,13 +10,14 @@ from typing import Callable, List, Optional
 
 import customtkinter as ctk
 
+from . import theme as t
 from . import vbcable
 
-ACCENT = "#3B8ED0"
-GREEN = "#4ADE80"
-RED = "#F87171"
-AMBER = "#F6AD55"
-MUTED = "gray"
+ACCENT = t.MAUVE
+GREEN = t.GREEN
+RED = t.RED
+AMBER = t.PEACH
+MUTED = t.OVERLAY
 
 
 class SetupWizard:
@@ -62,8 +63,8 @@ class SetupWizard:
 
     def show(self, parent: ctk.CTk):
         """Show the setup wizard window."""
-        self.window = ctk.CTkToplevel(parent)
-        self.window.title("Meo Mic Setup")
+        self.window = ctk.CTkToplevel(parent, fg_color=t.CRUST)
+        self.window.title("Meo Mic - Audio setup")
         self.window.geometry("520x700")
         self.window.resizable(False, False)
         self.window.transient(parent)
@@ -80,16 +81,27 @@ class SetupWizard:
 
         ctk.CTkLabel(
             main,
-            text="Virtual Audio Setup",
-            font=ctk.CTkFont(size=24, weight="bold")
-        ).pack(pady=(0, 3))
+            text=t.track("AUDIO SETUP"),
+            font=t.font("display", 10),
+            text_color=t.OVERLAY,
+            anchor="w",
+        ).pack(fill="x", pady=(0, 4))
 
         ctk.CTkLabel(
             main,
-            text="One-time setup to use your phone as a PC microphone",
-            font=ctk.CTkFont(size=12),
-            text_color=MUTED
-        ).pack(pady=(0, 15))
+            text="Make your phone the microphone",
+            font=t.font("display", 22, "bold"),
+            text_color=t.TEXT,
+            anchor="w",
+        ).pack(fill="x")
+
+        ctk.CTkLabel(
+            main,
+            text="One-time setup. Takes about a minute.",
+            font=t.font("body", 12),
+            text_color=MUTED,
+            anchor="w",
+        ).pack(fill="x", pady=(2, 16))
 
         scroll = ctk.CTkScrollableFrame(main, fg_color="transparent", height=460)
         scroll.pack(fill="both", expand=True)
@@ -103,13 +115,13 @@ class SetupWizard:
         self._refresh_state()
 
     def _build_why_card(self, parent):
-        card = ctk.CTkFrame(parent, corner_radius=10)
+        card = ctk.CTkFrame(parent, corner_radius=12, fg_color=t.BASE)
         card.pack(fill="x", pady=(0, 15))
 
         ctk.CTkLabel(
             card,
             text="Why is this needed?",
-            font=ctk.CTkFont(size=13, weight="bold")
+            font=t.font("display", 12, "bold")
         ).pack(pady=(12, 5), padx=15, anchor="w")
 
         ctk.CTkLabel(
@@ -118,20 +130,20 @@ class SetupWizard:
                  "VB-Cable adds a virtual audio device that bridges the gap: Meo Mic\n"
                  "plays your phone's audio into it, and Discord, Zoom or any other\n"
                  "app picks it up as a normal mic.",
-            font=ctk.CTkFont(size=12),
+            font=t.font("body", 12),
             text_color=MUTED,
             justify="left"
         ).pack(pady=(0, 12), padx=15, anchor="w")
 
     def _build_install_card(self, parent):
-        card = ctk.CTkFrame(parent, corner_radius=10, fg_color="#1E3A2F")
+        card = ctk.CTkFrame(parent, corner_radius=10, fg_color=t.BASE)
         card.pack(fill="x", pady=(0, 15))
 
         ctk.CTkLabel(
             card,
             text="Install VB-Cable",
-            font=ctk.CTkFont(size=15, weight="bold"),
-            text_color=GREEN
+            font=t.font("display", 15, "bold"),
+            text_color=t.TEXT
         ).pack(pady=(14, 4), padx=15, anchor="w")
 
         if vbcable.can_auto_install():
@@ -145,8 +157,8 @@ class SetupWizard:
         ctk.CTkLabel(
             card,
             text=blurb,
-            font=ctk.CTkFont(size=12),
-            text_color="#A0AEC0",
+            font=t.font("body", 12),
+            text_color=t.SUBTEXT,
             justify="left"
         ).pack(pady=(0, 10), padx=15, anchor="w")
 
@@ -156,7 +168,10 @@ class SetupWizard:
             width=240,
             height=40,
             corner_radius=8,
-            font=ctk.CTkFont(size=14, weight="bold"),
+            font=t.font("body", 13, "bold"),
+            fg_color=t.MAUVE,
+            text_color=t.CRUST,
+            hover_color=t.LAVENDER,
             command=self._start_install
         )
         self.install_btn.pack(pady=(0, 8), padx=15, anchor="w")
@@ -167,21 +182,23 @@ class SetupWizard:
             width=240,
             height=40,
             corner_radius=8,
-            font=ctk.CTkFont(size=14, weight="bold"),
-            fg_color="#2F855A",
-            hover_color="#276749",
+            font=t.font("body", 13, "bold"),
+            fg_color=t.GREEN,
+            text_color=t.CRUST,
+            hover_color=t.LAVENDER,
             command=self._restart_now
         )
         # Shown only once an install is waiting on a reboot.
 
-        self.progress_bar = ctk.CTkProgressBar(card, height=8, corner_radius=4)
+        self.progress_bar = ctk.CTkProgressBar(card, height=6, corner_radius=3,
+                                              fg_color=t.SURFACE0, progress_color=t.MAUVE)
         self.progress_bar.set(0)
 
         self.progress_label = ctk.CTkLabel(
             card,
             text="",
-            font=ctk.CTkFont(size=11),
-            text_color="#A0AEC0",
+            font=t.font("body", 11),
+            text_color=t.SUBTEXT,
             justify="left",
             wraplength=440
         )
@@ -191,16 +208,16 @@ class SetupWizard:
             text="VB-CABLE is donationware by VB-Audio (Vincent Burel). Meo Mic does\n"
                  "not bundle or modify it — you accept VB-Audio's terms in their own\n"
                  "installer. If it's useful, consider donating to them.",
-            font=ctk.CTkFont(size=10),
-            text_color="#718096",
+            font=t.font("body", 10),
+            text_color=t.OVERLAY,
             justify="left"
         ).pack(pady=(6, 4), padx=15, anchor="w")
 
         link = ctk.CTkLabel(
             card,
             text="vb-audio.com/Cable",
-            font=ctk.CTkFont(size=10, underline=True),
-            text_color="#63B3ED",
+            font=t.font("body", 10),
+            text_color=t.LAVENDER,
             cursor="hand2"
         )
         link.pack(pady=(0, 12), padx=15, anchor="w")
@@ -213,14 +230,14 @@ class SetupWizard:
             height=30,
             corner_radius=8,
             fg_color="transparent",
-            hover_color="#333",
+            hover_color=t.BASE,
             anchor="w",
             text_color=MUTED,
             command=self._toggle_manual
         )
         self.manual_toggle.pack(fill="x", pady=(0, 5))
 
-        self.manual_frame = ctk.CTkFrame(parent, corner_radius=10, fg_color="#252525")
+        self.manual_frame = ctk.CTkFrame(parent, corner_radius=10, fg_color=t.MANTLE)
 
         steps = [
             ("1", "Download VB-Cable", "Opens vb-audio.com/Cable in your browser"),
@@ -243,8 +260,11 @@ class SetupWizard:
             width=200,
             height=34,
             corner_radius=8,
-            fg_color="#444",
-            hover_color="#555",
+            fg_color="transparent",
+            border_width=1,
+            border_color=t.SURFACE0,
+            text_color=t.SUBTEXT,
+            hover_color=t.BASE,
             command=self._open_download
         ).pack(pady=(4, 14), padx=15, anchor="w")
 
@@ -258,17 +278,17 @@ class SetupWizard:
         ctk.CTkLabel(
             header,
             text=number,
-            font=ctk.CTkFont(size=14, weight="bold"),
+            font=t.font("body", 13, "bold"),
             width=28,
             height=28,
             corner_radius=14,
-            fg_color=ACCENT
+            fg_color=t.MAUVE
         ).pack(side="left", padx=(0, 10))
 
         ctk.CTkLabel(
             header,
             text=title,
-            font=ctk.CTkFont(size=14, weight="bold"),
+            font=t.font("body", 13, "bold"),
             anchor="w"
         ).pack(side="left", fill="x", expand=True)
 
@@ -276,7 +296,7 @@ class SetupWizard:
             ctk.CTkLabel(
                 frame,
                 text=details,
-                font=ctk.CTkFont(size=12),
+                font=t.font("body", 12),
                 text_color=MUTED,
                 anchor="w",
                 justify="left"
@@ -288,7 +308,7 @@ class SetupWizard:
         bottom = ctk.CTkFrame(parent, fg_color="transparent")
         bottom.pack(fill="x", pady=(10, 0))
 
-        self.status_label = ctk.CTkLabel(bottom, text="", font=ctk.CTkFont(size=12))
+        self.status_label = ctk.CTkLabel(bottom, text="", font=t.font("body", 12))
         self.status_label.pack(pady=(0, 8))
 
         buttons = ctk.CTkFrame(bottom, fg_color="transparent")
@@ -300,8 +320,11 @@ class SetupWizard:
             width=110,
             height=36,
             corner_radius=8,
-            fg_color="#444",
-            hover_color="#555",
+            fg_color="transparent",
+            border_width=1,
+            border_color=t.SURFACE0,
+            text_color=t.SUBTEXT,
+            hover_color=t.BASE,
             command=self._on_skip
         ).pack(side="left")
 
@@ -311,8 +334,11 @@ class SetupWizard:
             width=90,
             height=36,
             corner_radius=8,
-            fg_color="#444",
-            hover_color="#555",
+            fg_color="transparent",
+            border_width=1,
+            border_color=t.SURFACE0,
+            text_color=t.SUBTEXT,
+            hover_color=t.BASE,
             command=self._recheck
         ).pack(side="left", padx=10)
 
@@ -322,6 +348,11 @@ class SetupWizard:
             width=110,
             height=36,
             corner_radius=8,
+            font=t.font("body", 12, "bold"),
+            fg_color=t.MAUVE,
+            text_color=t.CRUST,
+            hover_color=t.LAVENDER,
+            text_color_disabled=t.OVERLAY,
             state="disabled",
             command=self._on_continue
         )
@@ -343,7 +374,7 @@ class SetupWizard:
         self.progress_bar.pack(fill="x", padx=15, pady=(0, 4))
         self.progress_bar.set(0)
         self.progress_label.pack(fill="x", padx=15, pady=(0, 6))
-        self.progress_label.configure(text="Starting...", text_color="#A0AEC0")
+        self.progress_label.configure(text="Starting...", text_color=t.SUBTEXT)
         self._set_status("", MUTED)
 
         threading.Thread(target=self._install_worker, daemon=True).start()
@@ -363,7 +394,7 @@ class SetupWizard:
         def update():
             if not self.progress_label:
                 return
-            self.progress_label.configure(text=message, text_color="#A0AEC0")
+            self.progress_label.configure(text=message, text_color=t.SUBTEXT)
             if fraction is None:
                 self.progress_bar.configure(mode="indeterminate")
                 self.progress_bar.start()

@@ -32,6 +32,7 @@ class AudioOutput:
 
         # Audio level
         self.current_level: float = 0.0
+        self.current_db: float = -120.0
 
         # Volume control (0.0 to 2.0, where 1.0 is normal)
         self.volume: float = 1.0
@@ -116,6 +117,7 @@ class AudioOutput:
         with self.buffer_lock:
             self.buffer = np.array([], dtype=np.int16)
         self.current_level = 0.0
+        self.current_db = -120.0
 
     def write(self, audio_data: bytes):
         """Write audio data."""
@@ -129,10 +131,15 @@ class AudioOutput:
             if self.volume != 1.0:
                 samples = (samples.astype(np.float32) * self.volume).clip(-32768, 32767).astype(np.int16)
 
-            # Update level
+            # Update level. The meter wants peak dBFS - that is what tells you
+            # whether you are about to clip, which RMS alone cannot.
             if len(samples) > 0:
-                rms = np.sqrt(np.mean(samples.astype(np.float32) ** 2))
+                floats = samples.astype(np.float32)
+                rms = np.sqrt(np.mean(floats ** 2))
                 self.current_level = min(1.0, rms / 10000.0)
+
+                peak = float(np.max(np.abs(floats))) / 32768.0
+                self.current_db = 20.0 * np.log10(max(peak, 1e-6))
 
             with self.buffer_lock:
                 # Add new samples
@@ -169,10 +176,15 @@ class AudioOutput:
                 # No data, output silence
                 outdata.fill(0)
                 self.current_level = 0.0
+                self.current_db = -120.0
 
     def get_level(self) -> float:
-        """Get audio level."""
+        """Get audio level (0.0-1.0, RMS)."""
         return self.current_level
+
+    def get_level_db(self) -> float:
+        """Get peak level in dBFS."""
+        return self.current_db
 
     def set_volume(self, volume: float):
         """Set volume (0.0 to 2.0)."""

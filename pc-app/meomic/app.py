@@ -69,9 +69,8 @@ class MeoMicApp:
     def _level_update_loop(self):
         """Background thread to update audio level in UI."""
         while self.running:
-            level = self.audio_output.get_level()
-            self.window.update_level(level)
-            time.sleep(0.05)
+            self.window.update_level_db(self.audio_output.get_level_db())
+            time.sleep(0.033)
 
     def start(self):
         """Start all components."""
