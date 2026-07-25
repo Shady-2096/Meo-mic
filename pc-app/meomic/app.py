@@ -15,6 +15,7 @@ from .audio_output import AudioOutput
 from .service_broadcaster import ServiceBroadcaster
 from .main_window import MainWindow
 from .setup_wizard import SetupWizard
+from . import vbcable
 
 
 class MeoMicApp:
@@ -116,6 +117,10 @@ class MeoMicApp:
 
     def _refresh_devices(self):
         """Refresh device list after setup wizard completes."""
+        # A driver installed while we were running is invisible to PortAudio
+        # until it re-enumerates.
+        vbcable.refresh_device_list()
+
         devices = self.audio_output.list_devices()
         virtual_device = self.audio_output.find_virtual_device()
 

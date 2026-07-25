@@ -32,17 +32,7 @@ Download `MeoMic.apk` from [Releases](../../releases)
 |<img src="https://github.com/user-attachments/assets/714a0e75-f48d-40b5-96be-c27ffd640eb1" width="400">
 ## Quick Start
 
-### Step 1: Install VB-Cable (Windows)
-
-VB-Cable is a free virtual audio driver that lets other apps use your phone as a microphone.
-
-1. Download from [vb-audio.com/Cable](https://vb-audio.com/Cable/)
-2. Extract the ZIP file
-3. **Right-click** `VBCABLE_Setup_x64.exe` → **Run as administrator**
-4. Click "Install Driver" and wait for completion
-5. **Restart your PC**
-
-### Step 2: Install the Apps
+### Step 1: Install the Apps
 
 **PC:**
 1. Extract `MeoMic-Windows.zip`
@@ -53,6 +43,26 @@ VB-Cable is a free virtual audio driver that lets other apps use your phone as a
 1. Download and install `MeoMic.apk`
 2. Allow installation from unknown sources if prompted
 3. Grant microphone permission when asked
+
+### Step 2: Install VB-Cable (Windows) — one click
+
+Windows has no built-in way for an app to appear as a microphone, so Meo Mic needs
+a virtual audio driver. On first run, the setup wizard offers to do this for you:
+
+1. Click **Install VB-Cable**
+2. Approve the Windows administrator prompt
+3. Click **Install Driver** in VB-Audio's installer
+4. Click **Restart now** when Meo Mic offers it
+
+Meo Mic downloads the driver pack straight from `vb-audio.com`, verifies its
+Authenticode signature before running anything, and launches VB-Audio's own
+installer unmodified. Nothing is bundled or repackaged.
+
+Prefer to do it yourself? The wizard's **Install manually instead** section has
+the same steps, or grab it from [vb-audio.com/Cable](https://vb-audio.com/Cable/).
+
+> VB-CABLE is donationware by VB-Audio (Vincent Burel). If you find it useful,
+> consider [donating to them](https://vb-audio.com/Cable/) — they make it possible.
 
 ### Step 3: Connect
 
@@ -157,9 +167,17 @@ The app will be in `dist\MeoMic\MeoMic.exe`
 - Extract the entire ZIP before running
 
 ### "CABLE Input" not showing
-- Make sure VB-Cable is installed
-- Restart your PC after installation
+- Make sure VB-Cable is installed (VB-Cable Setup → **Install VB-Cable**)
+- Restart your PC after installation — the device does not appear until you do
 - Check Device Manager for VB-Audio device
+
+### One-click install failed
+- **"Signature could not be verified"** — Meo Mic refuses to run an installer it
+  can't verify. Use the wizard's **Install manually instead** steps.
+- **"Administrator permission was declined"** — VB-Cable installs a driver, so
+  Windows requires elevation. Click **Try again** and approve the prompt.
+- **Download failed** — check your connection or a corporate proxy/firewall, then
+  fall back to the manual steps.
 
 ## License
 
