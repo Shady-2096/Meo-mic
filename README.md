@@ -2,7 +2,8 @@
 
 # Meo Mic
 
-Use your Android phone as a wireless microphone for your PC. Simple, lightweight, and free
+Use your Android phone as a wireless microphone for Windows or macOS. Simple,
+lightweight, and free.
 
 <img width="400" height="750" alt="Screenshot 2025-12-17 145040" src="https://github.com/user-attachments/assets/29f88143-1b3b-415a-bfc8-e41f3878204b" />
 
@@ -21,6 +22,12 @@ Use your Android phone as a wireless microphone for your PC. Simple, lightweight
 
 ### PC App (Windows)
 Download `MeoMic-Windows.zip` from [Releases](../../releases)
+
+### Mac App
+
+The native macOS client currently builds from source. It requires macOS 14 or
+later and a virtual audio device such as
+[BlackHole 2ch](https://existential.audio/blackhole/).
 
 ### Android App
 Download `MeoMic.apk` from [Releases](../../releases)
@@ -116,6 +123,26 @@ To build executable:
 build_windows.bat
 ```
 The app will be in `dist\MeoMic\MeoMic.exe`
+
+### macOS App (Swift)
+
+Xcode 16 or newer is recommended:
+
+```bash
+./scripts/build-app.sh release
+open build/MeoMic.app
+```
+
+The script builds a native Swift executable, assembles a real app bundle,
+declares local-network and Bonjour access, generates the app icon, and applies
+an ad-hoc signature for local use. Developer ID signing and notarization are
+still required before distributing the app.
+
+To exercise the UDP protocol without an Android phone:
+
+```bash
+./scripts/send-test-audio.py --host 127.0.0.1 --seconds 3
+```
 
 ### Android App
 

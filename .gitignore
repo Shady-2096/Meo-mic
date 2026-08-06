@@ -76,6 +76,7 @@ logs/
 htmlcov/
 
 # Distribution (built files go in GitHub Releases, not repo)
+.build/
 *.exe
 *.dmg
 *.AppImage
