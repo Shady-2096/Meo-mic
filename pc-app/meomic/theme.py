@@ -1,14 +1,15 @@
 """
-Meo Mic - Design tokens.
+Meo Mic - design tokens.
 
-The Android app is themed Catppuccin Mocha, so the desktop app uses the same
+The Android app is themed Catppuccin Mocha, so the desktop apps use the same
 palette: one product, one identity. Nothing here invents a new colour.
 
-The rule that gives the interface its character:
+Two rules give the interface its character:
 
     Chrome is achromatic. Saturated colour belongs to the signal.
+    Type is the operating system's own UI face, in sentence case.
 
-An idle Meo Mic is grey. The moment your voice arrives, the meter lights up.
+An idle Meo Mic is grey. The moment your voice arrives, the bar lights up.
 That makes "is it working?" answerable from across the desk, out of focus,
 without reading a word.
 """
@@ -16,33 +17,48 @@ without reading a word.
 from __future__ import annotations
 
 import sys
-from typing import Optional, Sequence
+from typing import Sequence
 
 # --------------------------------------------------------------------------- #
-# Colour - Catppuccin Mocha
+# Colour - Catppuccin Mocha, addressed by role
 # --------------------------------------------------------------------------- #
 
-CRUST = "#11111B"       # window base
-MANTLE = "#181825"      # recessed wells (meter trough)
-BASE = "#1E1E2E"        # raised panels
-SURFACE0 = "#313244"    # control fill, unlit meter segment
-SURFACE1 = "#45475A"    # control fill (hover), hairlines on raised panels
-SURFACE2 = "#585B70"
+WINDOW = "#11111B"      # window ground
+CARD = "#1E1E2E"        # raised card, control fill
+CARD_HOVER = "#313244"  # control hover
+BORDER = "#282839"      # hairlines, card outline
 
 TEXT = "#CDD6F4"        # primary type
-SUBTEXT = "#A6ADC8"     # secondary type
-OVERLAY = "#6C7086"     # labels, ticks, disabled
+TEXT_SECONDARY = "#A6ADC8"
+# Catppuccin Overlay2, not Overlay0. Labels and captions are set at 11px, and
+# Overlay0 measures 3.4:1 against the card - under AA for small text.
+TEXT_TERTIARY = "#9399B2"
 
-MAUVE = "#CBA6F7"       # brand accent - wordmark and focus only, never status
-LAVENDER = "#B4BEFE"
+ACCENT = "#CBA6F7"      # primary action, focus, brand. Never a status colour.
+ACCENT_HOVER = "#B4BEFE"
 
-# The signal ramp. Segment colour follows headroom, the way a real meter reads.
-GREEN = "#A6E3A1"       # plenty of headroom
-YELLOW = "#F9E2AF"      # getting warm
-PEACH = "#FAB387"       # hot
-RED = "#F38BA8"         # clipping
+LIVE = "#A6E3A1"        # connected, healthy level
+WARN = "#F9E2AF"        # level getting hot
+HOT = "#FAB387"         # level near clipping, soft warnings
+ERROR = "#F38BA8"       # errors, clipping
 
-LINE = "#282839"        # hairline rules on the window base
+# Legacy names. The setup wizard, QR and help windows still speak in these;
+# they map onto the roles above rather than defining new colours.
+CRUST = WINDOW
+MANTLE = "#181825"
+BASE = CARD
+SURFACE0 = CARD_HOVER
+SURFACE1 = "#45475A"
+SURFACE2 = "#585B70"
+SUBTEXT = TEXT_SECONDARY
+OVERLAY = TEXT_TERTIARY
+MAUVE = ACCENT
+LAVENDER = ACCENT_HOVER
+GREEN = LIVE
+YELLOW = WARN
+PEACH = HOT
+RED = ERROR
+LINE = BORDER
 
 
 def mix(color_a: str, color_b: str, amount: float) -> str:
@@ -55,29 +71,30 @@ def mix(color_a: str, color_b: str, amount: float) -> str:
 
 
 def dim(color: str, amount: float = 0.7) -> str:
-    """Push a colour towards the window base."""
-    return mix(color, CRUST, amount)
+    """Push a colour towards the window ground."""
+    return mix(color, WINDOW, amount)
 
 
 # --------------------------------------------------------------------------- #
 # Type
 # --------------------------------------------------------------------------- #
 #
-# Three roles, resolved against what the OS actually has installed:
+# One family: whatever the operating system uses for its own interface. A
+# utility window does not need a display face, and monospace here would be a
+# costume - there is no code and no column of figures to align.
 #
-#   DISPLAY  Bahnschrift - the condensed DIN-descended signage face Microsoft
-#            ships with Windows. Used all-caps, tracked out, for the wordmark
-#            and section labels. It reads as equipment panel lettering, which
-#            is exactly what this window is.
-#   DATA     Consolas / Menlo - tabular figures. IP addresses, dB values and
-#            percentages change constantly; monospaced digits keep the layout
-#            from twitching as they do.
-#   BODY     Segoe UI / SF Pro - sentence-case prose, nothing more.
+#   STATUS  19 bold     the one status sentence
+#   TITLE   14 bold     card titles
+#   BODY    12 regular  supporting sentences, controls
+#   LABEL   11 regular  field labels, captions, footer
 
-_DISPLAY_STACK = ("Bahnschrift", "Bahnschrift SemiCondensed", "Avenir Next Condensed",
-                  "Oswald", "Segoe UI Semibold", "Helvetica Neue", "DejaVu Sans")
-_DATA_STACK = ("Cascadia Mono", "Consolas", "SF Mono", "Menlo", "DejaVu Sans Mono", "Courier New")
-_BODY_STACK = ("Segoe UI Variable Text", "Segoe UI", "SF Pro Text", "Helvetica Neue", "DejaVu Sans")
+_UI_STACK = (
+    "Segoe UI Variable Text",   # Windows 11
+    "Segoe UI",                 # Windows 10
+    "SF Pro Text",              # macOS, when running from source
+    "Helvetica Neue",
+    "DejaVu Sans",
+)
 
 _resolved: dict = {}
 
@@ -104,34 +121,24 @@ def _resolve(stack: Sequence[str], fallback: str) -> str:
     return chosen
 
 
+def ui_family() -> str:
+    return _resolve(_UI_STACK, "Segoe UI" if sys.platform == "win32" else "Helvetica")
+
+
+# Kept so older call sites keep resolving; every role is now the same family.
 def display() -> str:
-    return _resolve(_DISPLAY_STACK, "Segoe UI" if sys.platform == "win32" else "Helvetica")
-
-
-def data() -> str:
-    return _resolve(_DATA_STACK, "Courier New")
+    return ui_family()
 
 
 def body() -> str:
-    return _resolve(_BODY_STACK, "Segoe UI" if sys.platform == "win32" else "Helvetica")
+    return ui_family()
 
 
 def font(role: str = "body", size: int = 12, weight: str = "normal"):
-    """Build a CTkFont for a role."""
+    """Build a CTkFont. *role* is accepted for call-site readability only."""
     import customtkinter as ctk
 
-    family = {"display": display, "data": data, "body": body}[role]()
-    return ctk.CTkFont(family=family, size=size, weight=weight)
-
-
-def track(text: str, spaces: int = 1) -> str:
-    """Fake letter-spacing.
-
-    Tk fonts have no tracking, so tracked labels are built by inserting
-    spaces. Only for short all-caps eyebrows - never for prose.
-    """
-    gap = " " * spaces
-    return gap.join(text)
+    return ctk.CTkFont(family=ui_family(), size=size, weight=weight)
 
 
 # --------------------------------------------------------------------------- #
@@ -145,5 +152,5 @@ LG = 18
 XL = 26
 
 PAD = 22        # window side gutter
-RADIUS = 8      # default corner radius
-RADIUS_LG = 12
+RADIUS = 8      # controls
+RADIUS_LG = 10  # cards

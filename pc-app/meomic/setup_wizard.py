@@ -81,16 +81,8 @@ class SetupWizard:
 
         ctk.CTkLabel(
             main,
-            text=t.track("AUDIO SETUP"),
-            font=t.font("display", 10),
-            text_color=t.OVERLAY,
-            anchor="w",
-        ).pack(fill="x", pady=(0, 4))
-
-        ctk.CTkLabel(
-            main,
             text="Make your phone the microphone",
-            font=t.font("display", 22, "bold"),
+            font=t.font("status", 20, "bold"),
             text_color=t.TEXT,
             anchor="w",
         ).pack(fill="x")
@@ -121,7 +113,7 @@ class SetupWizard:
         ctk.CTkLabel(
             card,
             text="Why is this needed?",
-            font=t.font("display", 12, "bold")
+            font=t.font("title", 12, "bold")
         ).pack(pady=(12, 5), padx=15, anchor="w")
 
         ctk.CTkLabel(
@@ -142,7 +134,7 @@ class SetupWizard:
         ctk.CTkLabel(
             card,
             text="Install VB-Cable",
-            font=t.font("display", 15, "bold"),
+            font=t.font("title", 15, "bold"),
             text_color=t.TEXT
         ).pack(pady=(14, 4), padx=15, anchor="w")
 
