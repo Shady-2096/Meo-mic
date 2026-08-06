@@ -24,6 +24,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.activity.compose.rememberLauncherForActivityResult
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 import com.wifmic.MainViewModel
 import com.wifmic.network.ServiceDiscovery
 import com.wifmic.ui.theme.*
@@ -43,6 +46,22 @@ fun MainScreen(
 
     var showManualConnectDialog by remember { mutableStateOf(false) }
     var manualIpAddress by remember { mutableStateOf("") }
+
+    // The scanner asks for the camera permission itself, and returns null
+    // contents when the user backs out of it.
+    val qrScanLauncher = rememberLauncherForActivityResult(ScanContract()) { result ->
+        result.contents?.let { viewModel.connectToScannedCode(it) }
+    }
+    val scanQrCode = {
+        qrScanLauncher.launch(
+            ScanOptions().apply {
+                setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+                setPrompt("Point at the QR code shown in Meo Mic on your computer")
+                setBeepEnabled(false)
+                setOrientationLocked(false)
+            }
+        )
+    }
 
     Box(
         modifier = Modifier
@@ -67,11 +86,22 @@ fun MainScreen(
                     color = Catpuccin.Text
                 )
 
-                IconButton(
-                    onClick = { showManualConnectDialog = true },
-                    modifier = Modifier.background(Catpuccin.Surface0, RoundedCornerShape(12.dp))
-                ) {
-                    Icon(Icons.Outlined.Edit, contentDescription = "Manual Connect", tint = Catpuccin.Subtext1)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (uiState.connectionState != ConnectionState.Connected) {
+                        IconButton(
+                            onClick = scanQrCode,
+                            modifier = Modifier.background(Catpuccin.Surface0, RoundedCornerShape(12.dp))
+                        ) {
+                            Icon(Icons.Outlined.QrCodeScanner, contentDescription = "Scan QR Code", tint = Catpuccin.Subtext1)
+                        }
+                    }
+
+                    IconButton(
+                        onClick = { showManualConnectDialog = true },
+                        modifier = Modifier.background(Catpuccin.Surface0, RoundedCornerShape(12.dp))
+                    ) {
+                        Icon(Icons.Outlined.Edit, contentDescription = "Manual Connect", tint = Catpuccin.Subtext1)
+                    }
                 }
             }
 
@@ -101,6 +131,7 @@ fun MainScreen(
                         discoveredPCs = discoveredPCs,
                         onSearch = { viewModel.startDiscovery() },
                         onConnect = { ip, port -> viewModel.connectTo(ip, port) },
+                        onScanQrCode = scanQrCode,
                         onManualConnect = { showManualConnectDialog = true }
                     )
                 }
@@ -127,7 +158,7 @@ fun MainScreen(
                 OutlinedTextField(
                     value = manualIpAddress,
                     onValueChange = { manualIpAddress = it },
-                    label = { Text("PC IP Address") },
+                    label = { Text("Computer IP Address") },
                     placeholder = { Text("192.168.1.100") },
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
@@ -141,7 +172,10 @@ fun MainScreen(
             confirmButton = {
                 TextButton(onClick = {
                     if (manualIpAddress.isNotBlank()) {
-                        viewModel.connectTo(manualIpAddress.trim())
+                        // Goes through the same parser as the QR code, so
+                        // "192.168.1.100:48888" and a pasted meomic:// address
+                        // both work here.
+                        viewModel.connectToTypedAddress(manualIpAddress)
                         showManualConnectDialog = false
                         manualIpAddress = ""
                     }
@@ -316,7 +350,7 @@ fun VolumeSlider(volume: Float, onVolumeChange: (Float) -> Unit, enabled: Boolea
 }
 
 @Composable
-fun ConnectionSection(connectionState: ConnectionState, discoveredPCs: List<ServiceDiscovery.DiscoveredPC>, onSearch: () -> Unit, onConnect: (String, Int) -> Unit, onManualConnect: () -> Unit) {
+fun ConnectionSection(connectionState: ConnectionState, discoveredPCs: List<ServiceDiscovery.DiscoveredPC>, onSearch: () -> Unit, onConnect: (String, Int) -> Unit, onScanQrCode: () -> Unit, onManualConnect: () -> Unit) {
     Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         if (connectionState == ConnectionState.Searching) {
             CircularProgressIndicator(color = Catpuccin.Mauve, modifier = Modifier.size(32.dp), strokeWidth = 3.dp)
@@ -337,6 +371,13 @@ fun ConnectionSection(connectionState: ConnectionState, discoveredPCs: List<Serv
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Search for PC", fontSize = 16.sp)
             }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+        OutlinedButton(onClick = onScanQrCode, colors = ButtonDefaults.outlinedButtonColors(contentColor = Catpuccin.Subtext1), border = androidx.compose.foundation.BorderStroke(1.dp, Catpuccin.Surface2), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth().height(48.dp)) {
+            Icon(Icons.Outlined.QrCodeScanner, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Scan QR Code", fontSize = 14.sp)
         }
 
         Spacer(modifier = Modifier.height(12.dp))

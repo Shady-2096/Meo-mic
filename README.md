@@ -11,7 +11,8 @@ lightweight, and free.
 ## Features
 
 - **Real-time audio streaming** over WiFi
-- **Auto-discovery** - Phone finds PC automatically on the same network
+- **Auto-discovery** - Phone finds your computer automatically on the same network
+- **QR pairing** - Scan the code on screen instead of typing an IP address
 - **Volume control** - Adjust input volume on both phone and PC (0-200%)
 - **Mute button** - Quick mute/unmute from your phone
 - **Low latency** - Optimized UDP streaming with latency display
@@ -118,10 +119,17 @@ stops and the manual steps open instead.
 ### Step 3: Connect
 
 1. Make sure both devices are on the **same WiFi network**
-2. Open Meo Mic on your PC - note the IP address shown
-3. Open Meo Mic on your phone
-4. Tap **"Search for PC"** or enter the IP address manually
-5. You should see "Connected" on both apps
+2. Open Meo Mic on your computer and on your phone
+3. On the phone, connect one of three ways:
+   - Tap **"Search for PC"** — your computer should appear by itself
+   - Tap **"Scan QR Code"**, then **Show QR** on the computer, and point the
+     phone at it
+   - Tap **"Enter IP Manually"** and type the address the computer shows
+4. You should see "Connected" on both apps
+
+The QR code and the manual field accept the same thing, so
+`192.168.1.100`, `192.168.1.100:48888` and `meomic://192.168.1.100:48888` all
+work.
 
 ### Step 4: Configure Audio Output
 
@@ -150,6 +158,7 @@ Meo Mic writes into the virtual device; your call app reads out of it.
 |---------|----------|
 | Mute Button (green/red) | Toggle microphone mute |
 | Volume Slider | Adjust input volume (0-200%) |
+| Scan QR Code | Pair by scanning the code on your computer |
 | Disconnect Button | End the connection |
 
 ### Desktop App
@@ -213,11 +222,21 @@ To exercise the UDP protocol without an Android phone:
 
 ### Android App
 
-1. Open `android-app` folder in Android Studio
+In Android Studio:
+
+1. Open the `android-app` folder
 2. Sync Gradle files
 3. Build → Generate Signed Bundle / APK → APK
 4. Create/select a keystore
 5. Build release APK
+
+Or from a terminal, with `ANDROID_HOME` pointing at your SDK:
+
+```bash
+cd android-app
+./gradlew assembleDebug
+./gradlew testDebugUnitTest
+```
 
 ## Technical Details
 
@@ -288,6 +307,13 @@ because notarization requires a paid Apple Developer account.
   **Install manually instead** and get it from
   [existential.audio](https://existential.audio/blackhole/)
 - Already installed? Click **Re-check**; no restart is needed on macOS
+
+### Scanning the QR code does nothing
+- Grant the camera permission when the scanner asks. It is only requested when
+  you open the scanner, never at startup
+- The scanner only accepts Meo Mic addresses. If it says the code is not one,
+  you are pointing at a different QR code
+- No camera, or the permission denied? **Enter IP Manually** works the same way
 
 ### macOS: phone cannot find the Mac
 - Approve the local network prompt (**System Settings → Privacy & Security →

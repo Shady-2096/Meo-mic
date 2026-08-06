@@ -86,6 +86,13 @@ dependencies {
 
     // Network Service Discovery (NSD) - built into Android, no extra dep needed
 
+    // QR scanning. ZXing is self-contained: no Play Services, so the APK works
+    // on devices without Google services too.
+    implementation("com.journeyapps:zxing-android-embedded:4.3.0")
+
+    // Tests
+    testImplementation("junit:junit:4.13.2")
+
     // Debug
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")

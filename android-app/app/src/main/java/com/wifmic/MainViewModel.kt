@@ -9,6 +9,7 @@ import android.os.IBinder
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.wifmic.audio.AudioRecorder
+import com.wifmic.network.ConnectionTarget
 import com.wifmic.network.ServiceDiscovery
 import com.wifmic.network.UdpAudioStreamer
 import com.wifmic.service.AudioStreamingService
@@ -132,6 +133,33 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun stopDiscovery() {
         serviceDiscovery.stopDiscovery()
+    }
+
+    /** Connects to the address in a scanned QR code. */
+    fun connectToScannedCode(rawValue: String?) {
+        connectToAddress(
+            rawValue,
+            failureMessage = "That QR code is not a Meo Mic address. " +
+                "Open Meo Mic on your computer and scan the code it shows."
+        )
+    }
+
+    /** Connects to an address someone typed or pasted. */
+    fun connectToTypedAddress(rawValue: String?) {
+        connectToAddress(
+            rawValue,
+            failureMessage = "That does not look like an address. " +
+                "Try something like 192.168.1.100"
+        )
+    }
+
+    private fun connectToAddress(rawValue: String?, failureMessage: String) {
+        val target = ConnectionTarget.parse(rawValue)
+        if (target == null) {
+            _uiState.update { it.copy(errorMessage = failureMessage) }
+            return
+        }
+        connectTo(target.host, target.port)
     }
 
     fun connectTo(ipAddress: String, port: Int = UdpAudioStreamer.DEFAULT_PORT) {
