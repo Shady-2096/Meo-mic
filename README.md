@@ -25,9 +25,29 @@ Download `MeoMic-Windows.zip` from [Releases](../../releases)
 
 ### Mac App
 
-The native macOS client currently builds from source. It requires macOS 14 or
-later and a virtual audio device such as
-[BlackHole 2ch](https://existential.audio/blackhole/).
+Download `MeoMic-macOS.zip` from [Releases](../../releases). Requires macOS 14
+or later.
+
+The Mac app is **not notarized** — notarization needs a paid Apple Developer
+account, and this project has none. macOS will refuse to open it the first
+time. That is expected, and here is how to get past it:
+
+1. Unzip and drag **Meo Mic** to your Applications folder
+2. Open it once. macOS blocks it and shows a warning — close that
+3. Go to **System Settings → Privacy & Security**, scroll down, and click
+   **Open Anyway** next to Meo Mic
+4. Confirm. macOS remembers the choice; later launches are normal
+
+On macOS 14 you can instead right-click the app and choose **Open**.
+
+Every release lists the app's SHA-256. To check your download matches:
+
+```bash
+shasum -a 256 MeoMic-macOS.zip
+```
+
+Nervous about running an unsigned app? [Build it from source](#macos-app-swift) —
+it takes one command.
 
 ### Android App
 Download `MeoMic.apk` from [Releases](../../releases)
@@ -41,10 +61,16 @@ Download `MeoMic.apk` from [Releases](../../releases)
 
 ### Step 1: Install the Apps
 
-**PC:**
+**Windows:**
 1. Extract `MeoMic-Windows.zip`
 2. Run `MeoMic.exe` from the extracted folder
 3. (Optional) Create a desktop shortcut to `MeoMic.exe`
+
+**Mac:**
+1. Extract `MeoMic-macOS.zip` and drag **Meo Mic** to Applications
+2. Approve it once in System Settings → Privacy & Security (see
+   [Mac App](#mac-app) above — the app is not notarized)
+3. Open it
 
 **Android:**
 1. Download and install `MeoMic.apk`
@@ -71,6 +97,24 @@ the same steps, or grab it from [vb-audio.com/Cable](https://vb-audio.com/Cable/
 > VB-CABLE is donationware by VB-Audio (Vincent Burel). If you find it useful,
 > consider [donating to them](https://vb-audio.com/Cable/) — they make it possible.
 
+### Step 2 (Mac): Install BlackHole — one click
+
+macOS has the same gap, so Meo Mic offers the same one-click route. On first
+run the setup sheet appears by itself:
+
+1. Click **Install BlackHole**
+2. Approve the administrator prompt in Apple's installer
+3. Meo Mic selects **BlackHole 2ch** automatically when it appears
+
+Meo Mic downloads the package straight from `existential.audio`, verifies
+Apple's signature on it and checks that Gatekeeper accepts it, then hands it to
+Apple's own Installer — which is what asks for your password. Meo Mic never
+sees it, and nothing is bundled or repackaged. If any check fails, the install
+stops and the manual steps open instead.
+
+> BlackHole is free, open-source software by
+> [Existential Audio](https://existential.audio/blackhole/).
+
 ### Step 3: Connect
 
 1. Make sure both devices are on the **same WiFi network**
@@ -81,16 +125,23 @@ the same steps, or grab it from [vb-audio.com/Cable](https://vb-audio.com/Cable/
 
 ### Step 4: Configure Audio Output
 
-In the PC app:
-- Select **"CABLE Input (VB-Audio Virtual Cable)"** from the dropdown
-- This sends audio TO the virtual cable
+In the desktop app, pick where Meo Mic sends your phone's voice:
+
+| | Select in Meo Mic |
+|---|---|
+| Windows | **CABLE Input (VB-Audio Virtual Cable)** |
+| macOS | **BlackHole 2ch** |
 
 ### Step 5: Use in Your Apps
 
-In Discord, Zoom, Teams, OBS, etc.:
-- Go to audio/microphone settings
-- Select **"CABLE Output (VB-Audio Virtual Cable)"** as your microphone
-- This receives audio FROM the virtual cable
+In Discord, Zoom, Teams, OBS, etc., go to audio/microphone settings and choose:
+
+| | Select as your microphone |
+|---|---|
+| Windows | **CABLE Output (VB-Audio Virtual Cable)** |
+| macOS | **BlackHole 2ch** |
+
+Meo Mic writes into the virtual device; your call app reads out of it.
 
 ## Controls
 
@@ -101,12 +152,12 @@ In Discord, Zoom, Teams, OBS, etc.:
 | Volume Slider | Adjust input volume (0-200%) |
 | Disconnect Button | End the connection |
 
-### PC App
+### Desktop App
 | Control | Function |
 |---------|----------|
 | Device Dropdown | Select audio output device |
 | Volume Slider | Adjust output volume (0-200%) |
-| VB-Cable Setup | Open setup wizard |
+| Audio Setup | Open the setup wizard (VB-Cable on Windows, BlackHole on macOS) |
 
 ## Building from Source
 
@@ -135,8 +186,24 @@ open build/MeoMic.app
 
 The script builds a native Swift executable, assembles a real app bundle,
 declares local-network and Bonjour access, generates the app icon, and applies
-an ad-hoc signature for local use. Developer ID signing and notarization are
-still required before distributing the app.
+an ad-hoc signature.
+
+To build the zip that goes on a release:
+
+```bash
+./scripts/package-release.sh
+```
+
+It prints the version and SHA-256 to paste into the release notes. The app is
+ad-hoc signed rather than Developer ID signed and notarized, because that needs
+a paid Apple Developer account — so users approve it once in System Settings on
+first launch, as described under [Mac App](#mac-app).
+
+To run the tests:
+
+```bash
+swift test
+```
 
 To exercise the UDP protocol without an Android phone:
 
@@ -163,14 +230,20 @@ To exercise the UDP protocol without an Android phone:
 
 ## Requirements
 
-### PC
+### Windows
 - Windows 10 or later
-- VB-Cable virtual audio driver
+- VB-Cable virtual audio driver (one-click install in the app)
+
+### macOS
+- macOS 14 or later
+- BlackHole 2ch virtual audio device (one-click install in the app)
+- Local network permission when macOS asks
 
 ### Android
 - Android 7.0 (API 24) or higher
 - Microphone permission
-- Same WiFi network as PC
+- Camera permission, only if you scan the QR code
+- Same WiFi network as your computer
 
 ## Troubleshooting
 
@@ -197,6 +270,29 @@ To exercise the UDP protocol without an Android phone:
 - Make sure VB-Cable is installed (VB-Cable Setup → **Install VB-Cable**)
 - Restart your PC after installation — the device does not appear until you do
 - Check Device Manager for VB-Audio device
+
+### macOS: "Meo Mic cannot be opened" / "Apple could not verify"
+This is Gatekeeper, not a problem with the download. The app is not notarized
+because notarization requires a paid Apple Developer account.
+- Open **System Settings → Privacy & Security**, scroll down, click
+  **Open Anyway** next to Meo Mic, and confirm
+- On macOS 14, right-click the app and choose **Open** instead
+- Compare `shasum -a 256 MeoMic-macOS.zip` against the release notes if you
+  want to confirm the download first
+- Or [build it from source](#macos-app-swift) and skip the question entirely
+
+### macOS: "BlackHole 2ch" not showing
+- Open **Audio Setup** in Meo Mic and click **Install BlackHole**
+- If the install refuses with a signature or Gatekeeper error, that is
+  deliberate — Meo Mic will not run a package it cannot verify. Use
+  **Install manually instead** and get it from
+  [existential.audio](https://existential.audio/blackhole/)
+- Already installed? Click **Re-check**; no restart is needed on macOS
+
+### macOS: phone cannot find the Mac
+- Approve the local network prompt (**System Settings → Privacy & Security →
+  Local Network → Meo Mic**)
+- macOS firewall: allow incoming connections for Meo Mic
 
 ### One-click install failed
 - **"Signature could not be verified"** — Meo Mic refuses to run an installer it
