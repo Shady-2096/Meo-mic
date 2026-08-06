@@ -14,13 +14,13 @@ struct QRCodeView: View {
             } else {
                 Image(systemName: "qrcode")
                     .font(.system(size: 48, weight: .ultraLight))
-                    .foregroundStyle(Palette.overlay)
+                    .foregroundStyle(Palette.textTertiary)
             }
         }
-        .frame(width: 148, height: 148)
-        .padding(12)
+        .frame(width: 160, height: 160)
+        .padding(14)
         .background(Palette.text)
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     private var image: NSImage? {

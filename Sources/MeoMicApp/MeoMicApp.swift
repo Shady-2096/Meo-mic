@@ -29,14 +29,16 @@ private struct MenuBarContent: View {
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
-        Text(model.isConnected ? "Phone live · \(Int(model.displayDB.rounded())) dBFS" : "Waiting for phone")
+        // The menu says the same thing the window does, in the same words.
+        // A dBFS reading here would be the instrument panel growing back.
+        Text(model.statusHeadline)
         Text(model.selectedDevice?.name ?? "No audio route")
         Divider()
         Button("Open Meo Mic") {
             openWindow(id: "main")
             NSApp.activate(ignoringOtherApps: true)
         }
-        Button("Audio Setup…") {
+        Button("Audio setup…") {
             openWindow(id: "main")
             NSApp.activate(ignoringOtherApps: true)
             model.showsSetup = true

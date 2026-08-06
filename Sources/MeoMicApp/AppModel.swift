@@ -12,22 +12,23 @@ final class AppModel: ObservableObject {
     @Published var selectedDeviceUID: String?
     @Published var gain = 1.0
     @Published private(set) var displayDB = -60.0
-    @Published private(set) var peakDB = -60.0
-    @Published private(set) var bufferMilliseconds = 0.0
-    @Published private(set) var driftPPM = 0.0
     @Published private(set) var packetsLost = 0
     @Published private(set) var errorMessage: String?
     @Published var showsSetup = false
     @Published var showsQRCode = false
 
-    let localAddress = LocalAddress.preferredIPv4() ?? "Unavailable"
+    /// Nil until macOS will tell us. Resolved repeatedly rather than once at
+    /// launch: on macOS 15 and later an app sees no useful interface list
+    /// until the person has granted Local Network access, and that approval
+    /// arrives seconds after the window is already on screen.
+    @Published private(set) var localAddress: String?
 
     private let receiver = NetworkReceiver()
     private let audio = AudioBridge()
     private var timer: Timer?
     private var targetDB = -60.0
-    private var peakHoldUntil = Date.distantPast
     private var lastPeakAt = Date.distantPast
+    private var ticksSinceAddressCheck = 0
     private var started = false
 
     var isConnected: Bool { clientAddress != nil }
@@ -35,14 +36,57 @@ final class AppModel: ObservableObject {
         devices.first { $0.uid == selectedDeviceUID }
     }
     var hasVirtualDevice: Bool { devices.contains(where: \.isVirtual) }
-    var connectionAddress: String { "\(localAddress):\(Self.port)" }
-    var qrPayload: String { "meomic://\(localAddress):\(Self.port)" }
     var routeIsReady: Bool { selectedDevice?.isVirtual == true }
+    var connectionAddress: String {
+        guard let localAddress else { return "" }
+        return "\(localAddress):\(Self.port)"
+    }
+    var qrPayload: String { "meomic://\(connectionAddress)" }
+
+    /// Enough packets have gone missing that the person would notice it as
+    /// choppy audio. Below this, silence is the right thing to say.
+    var connectionIsUnstable: Bool { packetsLost > 50 }
+
+    // MARK: - The sentence the window is built around
+
+    var statusHeadline: String {
+        isConnected ? "Your phone is live" : "Waiting for your phone"
+    }
+
+    var statusDetail: String {
+        if isConnected {
+            if let device = selectedDevice, device.isVirtual {
+                return "Arriving from \(clientAddress ?? "your phone") and going into \(device.name)."
+            }
+            return "Arriving from \(clientAddress ?? "your phone")."
+        }
+        if localAddress == nil {
+            return "Connect this Mac to Wi-Fi first."
+        }
+        return "Open Meo Mic on your phone — it will find this Mac."
+    }
+
+    var pairingHint: String {
+        "Tap Search for PC on your phone, or scan the code."
+    }
+
+    var routeMessage: String {
+        guard let device = selectedDevice else {
+            return "Pick a virtual audio device so call apps can hear your phone."
+        }
+        if device.isVirtual {
+            return "Ready — choose \(device.name) as your microphone in Discord, Zoom, or Meet."
+        }
+        return "This plays out loud. No app can use it as a microphone."
+    }
+
+    // MARK: - Lifecycle
 
     func start() {
         guard !started else { return }
         started = true
         devices = AudioDevices.outputDevices()
+        localAddress = LocalAddress.preferredIPv4()
 
         let savedUID = UserDefaults.standard.string(forKey: "outputDeviceUID")
         let initial = devices.first { $0.uid == savedUID }
@@ -62,7 +106,7 @@ final class AppModel: ObservableObject {
                 self.clientAddress = address
                 self.targetDB = -60
                 self.displayDB = -60
-                self.peakDB = -60
+                self.packetsLost = 0
                 self.audio.resetStream()
             }
         }
@@ -124,33 +168,37 @@ final class AppModel: ObservableObject {
     }
 
     func copyAddress() {
+        guard !connectionAddress.isEmpty else { return }
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(connectionAddress, forType: .string)
     }
+
+    // MARK: - Frame
 
     private func tick() {
         if Date().timeIntervalSince(lastPeakAt) > 0.07 {
             targetDB = -60
         }
 
+        // Instant attack, timed release. Without the asymmetry the bar
+        // flickers on every syllable and stops being readable.
         if targetDB >= displayDB {
             displayDB = targetDB
         } else {
             displayDB = max(targetDB, displayDB - 26 / 30)
         }
 
-        if displayDB >= peakDB {
-            peakDB = displayDB
-            peakHoldUntil = Date().addingTimeInterval(1.1)
-        } else if Date() > peakHoldUntil {
-            peakDB = max(displayDB, peakDB - 18 / 30)
-        }
-
-        let audioStats = audio.stats()
-        bufferMilliseconds = audioStats.bufferMilliseconds
-        driftPPM = audioStats.driftPartsPerMillion
         receiver.currentStats { [weak self] stats in
             Task { @MainActor in self?.packetsLost = stats.packetsLost }
+        }
+
+        ticksSinceAddressCheck += 1
+        if ticksSinceAddressCheck >= 60 {
+            ticksSinceAddressCheck = 0
+            let resolved = LocalAddress.preferredIPv4()
+            if resolved != localAddress {
+                localAddress = resolved
+            }
         }
     }
 }
