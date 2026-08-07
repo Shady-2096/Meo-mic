@@ -1,4 +1,4 @@
-package com.wifmic
+package com.meo
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -13,10 +13,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
-import com.wifmic.ui.MainScreen
-import com.wifmic.ui.SplashScreen
-import com.wifmic.ui.theme.Catpuccin
-import com.wifmic.ui.theme.MeoMicTheme
+import com.meo.ui.MainScreen
+import com.meo.ui.SplashScreen
+import com.meo.ui.theme.Catpuccin
+import com.meo.ui.theme.MeoMicTheme
 
 class MainActivity : ComponentActivity() {
 

@@ -1,4 +1,4 @@
-package com.wifmic.network
+package com.meo.network
 
 /**
  * A computer address to stream to.

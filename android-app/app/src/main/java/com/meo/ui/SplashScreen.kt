@@ -1,4 +1,4 @@
-package com.wifmic.ui
+package com.meo.ui
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -15,7 +15,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.wifmic.ui.theme.Catpuccin
+import com.meo.ui.theme.Catpuccin
 import kotlinx.coroutines.delay
 
 @Composable

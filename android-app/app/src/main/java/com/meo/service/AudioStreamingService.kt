@@ -1,4 +1,4 @@
-package com.wifmic.service
+package com.meo.service
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -12,10 +12,10 @@ import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
 import androidx.core.app.NotificationCompat
-import com.wifmic.MainActivity
-import com.wifmic.R
-import com.wifmic.audio.AudioRecorder
-import com.wifmic.network.UdpAudioStreamer
+import com.meo.MainActivity
+import com.meo.R
+import com.meo.audio.AudioRecorder
+import com.meo.network.UdpAudioStreamer
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -27,12 +27,12 @@ import kotlinx.coroutines.flow.StateFlow
 class AudioStreamingService : Service() {
 
     companion object {
-        const val NOTIFICATION_CHANNEL_ID = "wifmic_streaming"
+        const val NOTIFICATION_CHANNEL_ID = "meo_streaming"
         const val NOTIFICATION_ID = 1001
 
-        const val ACTION_START = "com.wifmic.START_STREAMING"
-        const val ACTION_STOP = "com.wifmic.STOP_STREAMING"
-        const val ACTION_MUTE = "com.wifmic.MUTE"
+        const val ACTION_START = "com.meo.START_STREAMING"
+        const val ACTION_STOP = "com.meo.STOP_STREAMING"
+        const val ACTION_MUTE = "com.meo.MUTE"
 
         const val EXTRA_IP_ADDRESS = "ip_address"
         const val EXTRA_PORT = "port"

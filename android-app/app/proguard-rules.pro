@@ -22,7 +22,7 @@
 }
 
 # Keep our app classes
--keep class com.wifmic.** { *; }
+-keep class com.meo.** { *; }
 
 # Keep service classes
 -keep class * extends android.app.Service

@@ -1,4 +1,4 @@
-package com.wifmic.network
+package com.meo.network
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow

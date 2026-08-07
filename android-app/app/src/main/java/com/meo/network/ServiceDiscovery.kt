@@ -1,4 +1,4 @@
-package com.wifmic.network
+package com.meo.network
 
 import android.content.Context
 import android.net.nsd.NsdManager

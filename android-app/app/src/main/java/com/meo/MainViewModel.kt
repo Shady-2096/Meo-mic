@@ -1,4 +1,4 @@
-package com.wifmic
+package com.meo
 
 import android.app.Application
 import android.content.ComponentName
@@ -8,12 +8,12 @@ import android.content.ServiceConnection
 import android.os.IBinder
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.wifmic.audio.AudioRecorder
-import com.wifmic.network.ConnectionTarget
-import com.wifmic.network.ServiceDiscovery
-import com.wifmic.network.UdpAudioStreamer
-import com.wifmic.service.AudioStreamingService
-import com.wifmic.ui.ConnectionState
+import com.meo.audio.AudioRecorder
+import com.meo.network.ConnectionTarget
+import com.meo.network.ServiceDiscovery
+import com.meo.network.UdpAudioStreamer
+import com.meo.service.AudioStreamingService
+import com.meo.ui.ConnectionState
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 

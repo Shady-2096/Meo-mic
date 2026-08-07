@@ -1,4 +1,4 @@
-package com.wifmic.ui.theme
+package com.meo.ui.theme
 
 import android.app.Activity
 import androidx.compose.material3.*

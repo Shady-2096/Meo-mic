@@ -1,4 +1,4 @@
-package com.wifmic.network
+package com.meo.network
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull

@@ -1,4 +1,4 @@
-package com.wifmic.audio
+package com.meo.audio
 
 import android.Manifest
 import android.content.Context

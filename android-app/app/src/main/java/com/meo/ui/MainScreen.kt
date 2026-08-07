@@ -1,4 +1,4 @@
-package com.wifmic.ui
+package com.meo.ui
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
@@ -27,9 +27,9 @@ import androidx.compose.ui.unit.sp
 import androidx.activity.compose.rememberLauncherForActivityResult
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
-import com.wifmic.MainViewModel
-import com.wifmic.network.ServiceDiscovery
-import com.wifmic.ui.theme.*
+import com.meo.MainViewModel
+import com.meo.network.ServiceDiscovery
+import com.meo.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

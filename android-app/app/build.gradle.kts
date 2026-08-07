@@ -4,12 +4,12 @@ plugins {
 }
 
 android {
-    namespace = "com.wifmic"
+    namespace = "com.meo"
     compileSdk = 35
     buildToolsVersion = "35.0.0"
 
     defaultConfig {
-        applicationId = "com.wifmic"
+        applicationId = "com.meo"
         minSdk = 24
         targetSdk = 35
         versionCode = 1
