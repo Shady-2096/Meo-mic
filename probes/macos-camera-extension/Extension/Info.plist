@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleExecutable</key>
+	<string>MeoCameraProbeExtension</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.meo.camera.probe.extension</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>Meo Camera Probe Extension</string>
+	<key>CFBundlePackageType</key>
+	<string>SYSX</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.1</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>13.0</string>
+	<!-- Declares this system extension as a Core Media I/O camera provider.
+	     Without CMIOExtensionMachServiceName the extension installs but no
+	     camera ever appears, which is a confusing failure to debug. -->
+	<key>CMIOExtension</key>
+	<dict>
+		<key>CMIOExtensionMachServiceName</key>
+		<string>com.meo.camera.probe.extension</string>
+	</dict>
+	<key>NSHumanReadableCopyright</key>
+	<string>Copyright (c) 2026 shady-2096 (Meo contributor)</string>
+	<key>OSBundleUsageDescription</key>
+	<string>Provides the Meo Camera virtual camera used by this feasibility probe.</string>
+</dict>
+</plist>

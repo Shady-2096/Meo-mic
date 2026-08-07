@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleExecutable</key>
+	<string>MeoCameraProbe</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.meo.camera.probe</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>Meo Camera Probe</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.1</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>13.0</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSHumanReadableCopyright</key>
+	<string>Copyright (c) 2026 shady-2096 (Meo contributor)</string>
+	<!-- Needed to open the preview pane. The probe reads a camera to prove the
+	     extension is emitting frames; §6.5's privacy rules apply to the real
+	     product, not to a local test rig, but the string is still honest. -->
+	<key>NSCameraUsageDescription</key>
+	<string>Previews the Meo virtual camera to confirm it is producing frames.</string>
+</dict>
+</plist>

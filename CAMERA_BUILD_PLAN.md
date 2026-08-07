@@ -7,6 +7,25 @@ Maintainer model: single maintainer
 Budget: zero recurring cost
 Planning date: 2026-07-26
 
+> **Milestone 0 is in progress and has already contradicted this document.**
+>
+> §8.1's primary macOS path — build from source, `systemextensionsctl
+> developer on`, SIP intact — **does not exist on current macOS**. Developer
+> mode now refuses to run while SIP is enabled, and an ad-hoc app that claims
+> the system-extension entitlement is killed at launch. Measured 2026-08-07 on
+> macOS 26.5.1; see [`adr/0004-macos-distribution-reality.md`](adr/0004-macos-distribution-reality.md)
+> and the raw run in
+> [`probes/macos-camera-extension/RESULTS-2026-08-07.md`](probes/macos-camera-extension/RESULTS-2026-08-07.md).
+>
+> Consequences: macOS Camera is **blocked**, Windows is the first desktop
+> platform ([`adr/0005`](adr/0005-first-desktop-platform.md)), and §8.1 and §16
+> below are stale where they promise a working build-from-source macOS story.
+> The Windows probes (§18 steps 1 and 3) are written but not yet run, so
+> [`adr/0002`](adr/0002-directshow-scope.md) and
+> [`adr/0003`](adr/0003-windows-registration-scope.md) decide nothing yet.
+>
+> Read [`adr/README.md`](adr/README.md) before trusting any section below.
+
 ## 0. Constraints that shape every decision below
 
 These are not preferences. They are inputs that change the architecture, and the

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- THIS is the entitlement §8.1 is about.
+	     Apple only issues a provisioning profile carrying it to a PAID
+	     Developer Program membership; a free Apple ID's personal team cannot.
+	     It is requested here anyway, deliberately: the probe needs to see
+	     what macOS says when an ad-hoc signature claims it, and the exact
+	     error is the finding. -->
+	<key>com.apple.developer.system-extension.install</key>
+	<true/>
+</dict>
+</plist>

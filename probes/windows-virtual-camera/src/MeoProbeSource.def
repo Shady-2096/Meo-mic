@@ -1,0 +1,8 @@
+LIBRARY MeoProbeSource
+
+EXPORTS
+    DllGetClassObject   PRIVATE
+    DllCanUnloadNow     PRIVATE
+    DllRegisterServer   PRIVATE
+    DllUnregisterServer PRIVATE
+    DllInstall          PRIVATE
