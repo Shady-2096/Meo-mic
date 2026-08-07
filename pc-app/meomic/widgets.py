@@ -1,15 +1,19 @@
 """
 Meo Mic - custom widgets.
 
-The voice bar is the centre of this app. Everything else on screen is a setting
-you touch once; the bar is the only thing that answers the question you opened
-the window to ask - "can they hear me?"
+The waveform is the centre of this app. Everything else on screen is a setting
+you touch once; the waveform is the only thing that answers the question you
+opened the window to ask - "can they hear me?"
 
-It replaced a segmented, tick-marked dBFS meter. The ballistics are unchanged,
-because instant attack and timed release are what make a level readable at a
-glance. What changed is that it no longer asks a person joining a Zoom call to
-read a calibrated scale: one continuous bar, one colour at a time, and a
-sentence underneath saying what it means.
+It has been a segmented dBFS meter and then a single level bar. The ballistics
+underneath have never changed, because instant attack and timed release are
+what make a level readable at a glance. What changed is that it now keeps the
+last two seconds on screen instead of only the present instant: a flat line
+means silence and a moving one means your voice is arriving, which nobody has
+to be taught to read.
+
+Matches the Mac app's waveform deliberately - same sample count, same
+ballistics, same fade toward the older edge.
 """
 
 from __future__ import annotations
@@ -22,25 +26,8 @@ import customtkinter as ctk
 from . import theme as t
 
 
-class StatusDot(tk.Canvas):
-    """A small filled dot. Grey while waiting, green while live."""
-
-    SIZE = 10
-
-    def __init__(self, parent, bg: str = t.WINDOW, **kwargs):
-        super().__init__(
-            parent, width=self.SIZE, height=self.SIZE, bg=bg,
-            highlightthickness=0, bd=0, **kwargs
-        )
-        self._dot = self.create_oval(1, 1, self.SIZE - 1, self.SIZE - 1,
-                                     fill=t.TEXT_TERTIARY, outline="")
-
-    def set_live(self, live: bool):
-        self.itemconfig(self._dot, fill=t.LIVE if live else t.TEXT_TERTIARY)
-
-
-class VoiceBar(ctk.CTkFrame):
-    """A continuous level bar with meter ballistics and a plain-English caption.
+class Waveform(ctk.CTkFrame):
+    """A rolling level history with meter ballistics and a plain-English caption.
 
     Feed it dBFS with :meth:`set_db`; it handles its own animation.
     """
@@ -48,12 +35,16 @@ class VoiceBar(ctk.CTkFrame):
     MIN_DB = -60.0
     MAX_DB = 0.0
 
-    RELEASE_DB_PER_SEC = 26.0     # how fast the bar falls once you stop talking
+    RELEASE_DB_PER_SEC = 26.0     # how fast the level falls once you stop talking
     FRAME_MS = 33                 # ~30 fps
 
-    HEIGHT = 12
+    SAMPLES = 58
+    BAR_W = 3
+    GAP = 2
+    HEIGHT = 40
+    FLOOR_PX = 2                  # silence is a hairline, not an empty box
 
-    def __init__(self, parent, width: int = 336, **kwargs):
+    def __init__(self, parent, width: int = 320, **kwargs):
         super().__init__(parent, fg_color="transparent", **kwargs)
 
         self._width = width
@@ -61,68 +52,67 @@ class VoiceBar(ctk.CTkFrame):
         self._level_db = self.MIN_DB
         self._target_db = self.MIN_DB
         self._running = False
+        # Derived from the width rather than fixed, so the bars fill the panel
+        # exactly instead of leaving a dead strip at the right.
+        self._count = max(24, int(width // (self.BAR_W + self.GAP)))
+        self._samples = [0.0] * self._count
 
+        ground = t.resolve(t.WINDOW)
         self.canvas = tk.Canvas(
-            self, width=width, height=self.HEIGHT, bg=t.WINDOW,
-            highlightthickness=0, bd=0
+            self, width=width, height=self.HEIGHT, bg=ground,
+            highlightthickness=0, bd=0,
         )
         self.canvas.pack(fill="x")
 
-        self._track = self._rounded(0, 0, width, self.HEIGHT, t.CARD)
-        self._fill = self._rounded(0, 0, 1, self.HEIGHT, t.LIVE)
-        self.canvas.itemconfigure(self._fill, state="hidden")
+        # One rectangle per sample, created once and then only moved. Recreating
+        # canvas items 30 times a second is what makes Tk animations stutter.
+        self._bars = []
+        for index in range(self._count):
+            x = index * (self.BAR_W + self.GAP)
+            mid = self.HEIGHT / 2
+            self._bars.append(
+                self.canvas.create_rectangle(
+                    x, mid - 1, x + self.BAR_W, mid + 1,
+                    fill=t.resolve(t.TEXT_TERTIARY), outline="",
+                )
+            )
 
         self.caption = ctk.CTkLabel(
             self,
             text="No sound yet",
             font=t.font("label", 11),
-            text_color=t.TEXT_TERTIARY,
+            text_color=t.TEXT_SECONDARY,
             anchor="w",
         )
         self.caption.pack(fill="x", pady=(t.SM, 0))
 
-    # -- drawing ----------------------------------------------------------- #
+    # -- appearance -------------------------------------------------------- #
 
-    def _rounded(self, x0, y0, x1, y1, color):
-        """A capsule. Tk has no rounded rectangle, so it is drawn as one."""
-        radius = (y1 - y0) / 2
-        return self.canvas.create_polygon(
-            self._capsule_points(x0, y0, x1, y1, radius),
-            fill=color, outline="", smooth=True,
-        )
+    def refresh_theme(self):
+        """Re-resolve colours after the appearance mode changes."""
+        self.canvas.configure(bg=t.resolve(t.WINDOW))
+        self._redraw()
 
-    @staticmethod
-    def _capsule_points(x0, y0, x1, y1, r):
-        return [
-            x0 + r, y0,
-            x1 - r, y0, x1, y0, x1, y0 + r,
-            x1, y1 - r, x1, y1, x1 - r, y1,
-            x0 + r, y1, x0, y1, x0, y1 - r,
-            x0, y0 + r, x0, y0,
-        ]
-
-    def _level_color(self, db: float) -> str:
-        if db >= -3:
-            return t.ERROR
-        if db >= -6:
-            return t.HOT
-        if db >= -12:
-            return t.WARN
-        return t.LIVE
+    def _bar_color(self) -> str:
+        if not self._connected:
+            return t.resolve(t.TEXT_TERTIARY)
+        if self._level_db >= -3:
+            return t.resolve(t.WARN)
+        return t.resolve(t.ACCENT)
 
     def _caption_for(self, db: float) -> tuple:
         """What the level means, in the words of someone about to join a call."""
         if not self._connected:
-            return "No sound yet", t.TEXT_TERTIARY
+            return "No sound yet", t.TEXT_SECONDARY
         if db < -50:
-            return "Very quiet - say something", t.TEXT_TERTIARY
+            return "Very quiet - say something", t.TEXT_SECONDARY
         if db < -30:
             return "A little quiet", t.TEXT_SECONDARY
         if db < -6:
             return "Sounds good", t.TEXT_SECONDARY
         if db < -3:
             return "Getting loud", t.TEXT_SECONDARY
-        return "Too loud - turn the volume down on your phone", t.HOT
+        return "Too loud - turn it down on your phone", t.WARN
 
     # -- animation --------------------------------------------------------- #
 
@@ -135,7 +125,7 @@ class VoiceBar(ctk.CTkFrame):
         self._running = False
 
     def set_db(self, db: float):
-        """Feed the bar a dBFS value. Safe to call from any thread."""
+        """Feed the waveform a dBFS value. Safe to call from any thread."""
         self._target_db = max(self.MIN_DB, min(self.MAX_DB, db))
 
     def set_connected(self, connected: bool):
@@ -143,8 +133,6 @@ class VoiceBar(ctk.CTkFrame):
         if not connected:
             self._target_db = self.MIN_DB
             self._level_db = self.MIN_DB
-        # Repaint now rather than on the next frame: a state change the person
-        # just caused should not wait 33ms to appear.
         self._redraw()
 
     def _tick(self):
@@ -154,8 +142,8 @@ class VoiceBar(ctk.CTkFrame):
         step = self.FRAME_MS / 1000.0
 
         # Attack is instant, release is timed. That asymmetry is what makes a
-        # level readable: you catch every transient, but the bar does not
-        # flicker on every syllable.
+        # level readable: you catch every transient, but it does not flicker on
+        # every syllable.
         if self._target_db >= self._level_db:
             self._level_db = self._target_db
         else:
@@ -163,6 +151,12 @@ class VoiceBar(ctk.CTkFrame):
                 self._target_db,
                 self._level_db - self.RELEASE_DB_PER_SEC * step,
             )
+
+        span = self.MAX_DB - self.MIN_DB
+        sample = (self._level_db - self.MIN_DB) / span if self._connected else 0.0
+
+        self._samples.pop(0)
+        self._samples.append(max(0.0, min(1.0, sample)))
 
         self._redraw()
 
@@ -172,40 +166,87 @@ class VoiceBar(ctk.CTkFrame):
             self._running = False
 
     def _redraw(self):
-        live = self._connected and self._level_db > self.MIN_DB
+        color = self._bar_color()
+        mid = self.HEIGHT / 2
 
-        if live:
-            span = self.MAX_DB - self.MIN_DB
-            fraction = (self._level_db - self.MIN_DB) / span
-            width = max(self.HEIGHT, fraction * self._width)
-            self.canvas.coords(
-                self._fill,
-                *self._capsule_points(0, 0, width, self.HEIGHT, self.HEIGHT / 2),
-            )
-            self.canvas.itemconfigure(
-                self._fill, state="normal", fill=self._level_color(self._level_db)
-            )
-        else:
-            self.canvas.itemconfigure(self._fill, state="hidden")
+        for index, item in enumerate(self._bars):
+            height = max(self.FLOOR_PX, self._samples[index] * self.HEIGHT)
+            x = index * (self.BAR_W + self.GAP)
+            self.canvas.coords(item, x, mid - height / 2, x + self.BAR_W, mid + height / 2)
+            self.canvas.itemconfigure(item, fill=color)
 
-        text, color = self._caption_for(self._level_db)
+        text, text_color = self._caption_for(self._level_db)
         if self.caption.cget("text") != text:
-            self.caption.configure(text=text, text_color=color)
+            self.caption.configure(text=text, text_color=text_color)
 
     def resize(self, width: int):
         self._width = width
         self.canvas.configure(width=width)
-        self.canvas.coords(
-            self._track, *self._capsule_points(0, 0, width, self.HEIGHT, self.HEIGHT / 2)
-        )
 
     @property
     def level_db(self) -> float:
         return self._level_db
 
 
+# Older call sites imported the level bar under its previous name.
+VoiceBar = Waveform
+
+
+class StatusGlyph(ctk.CTkFrame):
+    """A round tinted badge holding the connection state. Green when live."""
+
+    SIZE = 30
+
+    def __init__(self, parent, **kwargs):
+        super().__init__(
+            parent,
+            width=self.SIZE,
+            height=self.SIZE,
+            corner_radius=self.SIZE // 2,
+            fg_color=t.CONTROL,
+            **kwargs,
+        )
+        self.pack_propagate(False)
+
+        self._label = ctk.CTkLabel(
+            self,
+            text="○",
+            font=t.font("label", 13, "bold"),
+            text_color=t.TEXT_SECONDARY,
+        )
+        self._label.pack(expand=True)
+
+    def set_live(self, live: bool):
+        # Tk has no alpha, so the tinted badge is a precomputed blend.
+        self.configure(fg_color=t.mix(t.LIVE, t.WINDOW, 0.82) if live else t.CONTROL)
+        self._label.configure(
+            text="●" if live else "○",
+            text_color=t.LIVE if live else t.TEXT_SECONDARY,
+        )
+
+
+# Older call sites imported the dot under its previous name.
+StatusDot = StatusGlyph
+
+
+def card(parent) -> ctk.CTkFrame:
+    """An inset grouped container - the only box in the window."""
+    return ctk.CTkFrame(
+        parent,
+        fg_color=t.CARD,
+        corner_radius=t.RADIUS_LG,
+        border_width=1,
+        border_color=t.BORDER,
+    )
+
+
+def separator(parent) -> ctk.CTkFrame:
+    """A row separator inside a grouped card."""
+    return ctk.CTkFrame(parent, height=1, fg_color=t.SEPARATOR, corner_radius=0)
+
+
 def field_label(parent, text: str) -> ctk.CTkLabel:
-    """A quiet, sentence-case label above a control."""
+    """A quiet, sentence-case label."""
     return ctk.CTkLabel(
         parent,
         text=text,
@@ -215,6 +256,19 @@ def field_label(parent, text: str) -> ctk.CTkLabel:
     )
 
 
-def hairline(parent, color: str = t.BORDER) -> ctk.CTkFrame:
+def hairline(parent, color=None) -> ctk.CTkFrame:
     """A one-pixel rule."""
-    return ctk.CTkFrame(parent, height=1, fg_color=color, corner_radius=0)
+    return ctk.CTkFrame(parent, height=1, fg_color=color or t.BORDER, corner_radius=0)
+
+
+def inline_note(parent, text: str, tint=None, wraplength: Optional[int] = None) -> ctk.CTkLabel:
+    """An advisory line, in the flow, where the problem is."""
+    return ctk.CTkLabel(
+        parent,
+        text=text,
+        font=t.font("label", 11),
+        text_color=tint or t.TEXT_SECONDARY,
+        anchor="w",
+        justify="left",
+        wraplength=wraplength or 300,
+    )

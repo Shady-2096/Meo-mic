@@ -1,12 +1,13 @@
 """
 Meo Mic - main window.
 
-One column, two shapes.
+A compact utility panel, built to match the Mac app: one status line, a live
+waveform, and a single grouped card holding the two things anyone ever sets.
 
-Waiting: a sentence tells you what to do, and a card carries the address, copy
-and QR. Live: the card gets out of the way and the voice bar carries the
-window. Everything else - where the audio goes, how loud - is set once and then
-ignored, so it sits below both.
+Two shapes. Waiting: the address sits in a field you can copy or scan, and
+there is no waveform, because a meter with nothing to meter is noise. Live: the
+waveform replaces it. The audio route is not diagrammed anywhere - it only
+matters when it is broken, and then it is one line under the card.
 """
 
 from __future__ import annotations
@@ -18,13 +19,16 @@ from typing import Callable, List, Optional
 import customtkinter as ctk
 
 from . import theme as t
-from .widgets import StatusDot, VoiceBar, field_label, hairline
+from .widgets import StatusGlyph, Waveform, card, hairline, separator
 
-ctk.set_appearance_mode("dark")
+# Follows the Windows light/dark setting, the same way the Mac app follows the
+# system appearance. Read once at startup; switching themes needs a restart.
+ctk.set_appearance_mode("System")
 
 WIDTH = 400
-HEIGHT_WAITING = 610
-HEIGHT_LIVE = 430
+CONTENT = WIDTH - 2 * t.PAD
+HEIGHT_WAITING = 470
+HEIGHT_LIVE = 440
 QR_EXTRA = 190   # the window grows to make room rather than clipping
 
 
@@ -53,10 +57,11 @@ class MainWindow:
         self._pending_connection_info: Optional[tuple] = None
 
         # Widgets
-        self.status_dot: Optional[StatusDot] = None
+        self.status_dot: Optional[StatusGlyph] = None
         self.status_headline: Optional[ctk.CTkLabel] = None
         self.status_detail: Optional[ctk.CTkLabel] = None
-        self.voice: Optional[VoiceBar] = None
+        self.voice: Optional[Waveform] = None
+        self.voice_block: Optional[ctk.CTkFrame] = None
         self.pairing_card: Optional[ctk.CTkFrame] = None
         self.address_label: Optional[ctk.CTkLabel] = None
         self.device_menu: Optional[ctk.CTkOptionMenu] = None
@@ -69,6 +74,10 @@ class MainWindow:
         self._qr_frame: Optional[ctk.CTkFrame] = None
         self._qr_visible = False
         self._qr_image = None
+        # Which of the two shapes is on screen. Tracked explicitly rather than
+        # read back with winfo_ismapped(), which reports False until the
+        # geometry manager has run - so at startup both would show.
+        self._shape: Optional[str] = None
 
     # ------------------------------------------------------------------ #
     # Construction
@@ -79,7 +88,6 @@ class MainWindow:
         self.root.title("Meo Mic")
         self.root.geometry(f"{WIDTH}x{HEIGHT_WAITING}")
         self.root.resizable(False, False)
-        self.root.configure(fg_color=t.WINDOW)
 
         self._set_icon()
 
@@ -94,131 +102,169 @@ class MainWindow:
         self._build_status()
         self._build_voice()
         self._build_pairing()
-        self._build_output()
+        self._build_settings()
 
         self.voice.start()
         self._apply_pending_data()
-
-    def _section(self, pady=(t.LG, 0)) -> ctk.CTkFrame:
-        frame = ctk.CTkFrame(self.root, fg_color="transparent")
-        frame.pack(fill="x", padx=t.PAD, pady=pady)
-        return frame
+        self._do_update_status(self.is_connected, self.client_ip)
 
     # -- status ---------------------------------------------------------- #
 
     def _build_status(self):
-        block = self._section(pady=(t.XL, 0))
+        block = ctk.CTkFrame(self.root, fg_color="transparent")
+        block.pack(fill="x", padx=t.PAD, pady=(t.XL, 0))
 
-        headline_row = ctk.CTkFrame(block, fg_color="transparent")
-        headline_row.pack(fill="x")
+        self.status_dot = StatusGlyph(block)
+        self.status_dot.pack(side="left", padx=(0, t.MD))
 
-        self.status_dot = StatusDot(headline_row)
-        self.status_dot.pack(side="left", padx=(0, 9), pady=(9, 0))
+        text_col = ctk.CTkFrame(block, fg_color="transparent")
+        text_col.pack(side="left", fill="x", expand=True)
 
         self.status_headline = ctk.CTkLabel(
-            headline_row,
+            text_col,
             text="Waiting for your phone",
-            font=t.font("status", 19, "bold"),
+            font=t.font("status", 18, "bold"),
             text_color=t.TEXT,
             anchor="w",
         )
-        self.status_headline.pack(side="left")
+        self.status_headline.pack(fill="x")
 
         self.status_detail = ctk.CTkLabel(
-            block,
-            text="Open Meo Mic on your phone - it will find this PC.",
+            text_col,
+            text="Open Meo Mic on your phone - it'll find this PC.",
             font=t.font("body", 12),
             text_color=t.TEXT_SECONDARY,
             anchor="w",
             justify="left",
-            wraplength=WIDTH - 2 * t.PAD - 19,
+            wraplength=CONTENT - StatusGlyph.SIZE - t.MD,
         )
-        self.status_detail.pack(fill="x", padx=(19, 0), pady=(t.XS, 0))
+        self.status_detail.pack(fill="x", pady=(1, 0))
 
-    # -- voice bar ------------------------------------------------------- #
+    # -- waveform -------------------------------------------------------- #
 
     def _build_voice(self):
-        block = self._section(pady=(t.LG, 0))
-        self.voice = VoiceBar(block, width=WIDTH - 2 * t.PAD)
+        self.voice_block = ctk.CTkFrame(self.root, fg_color="transparent")
+        self.voice_block.pack(fill="x", padx=t.PAD, pady=(t.LG, 0))
+        self.voice = Waveform(self.voice_block, width=CONTENT)
         self.voice.pack(fill="x")
 
     # -- pairing --------------------------------------------------------- #
 
     def _build_pairing(self):
-        self.pairing_card = ctk.CTkFrame(
-            self.root,
-            fg_color=t.CARD,
-            corner_radius=t.RADIUS_LG,
-            border_width=1,
-            border_color=t.BORDER,
-        )
-        self.pairing_card.pack(fill="x", padx=t.PAD, pady=(t.XL, 0))
+        """The address as a field, not a headline. Reading it off the screen
+        into a phone is the actual task."""
+        self.pairing_card = ctk.CTkFrame(self.root, fg_color="transparent")
+        self.pairing_card.pack(fill="x", padx=t.PAD, pady=(t.LG, 0))
 
-        inner = ctk.CTkFrame(self.pairing_card, fg_color="transparent")
-        inner.pack(fill="x", padx=t.LG, pady=t.LG)
+        field = card(self.pairing_card)
+        field.pack(fill="x")
 
-        ctk.CTkLabel(
-            inner,
-            text="Connect your phone",
-            font=t.font("title", 14, "bold"),
-            text_color=t.TEXT,
-            anchor="w",
-        ).pack(fill="x")
+        inner = ctk.CTkFrame(field, fg_color="transparent")
+        inner.pack(fill="x", padx=t.MD, pady=t.SM)
 
         self.address_label = ctk.CTkLabel(
             inner,
             text="Looking for your network...",
-            font=t.font("body", 17, "bold"),
+            font=t.font("address", 17, "bold"),
             text_color=t.TEXT,
             anchor="w",
         )
-        self.address_label.pack(fill="x", pady=(t.SM, 0))
+        self.address_label.pack(side="left")
+
+        self.qr_btn = self._icon_button(inner, "QR", self._toggle_qr)
+        self.qr_btn.pack(side="right")
+
+        self.copy_btn = self._icon_button(inner, "Copy", self._copy_ip)
+        self.copy_btn.pack(side="right", padx=(0, t.XS))
 
         ctk.CTkLabel(
-            inner,
-            text="Tap Search for PC on your phone, or scan the code.",
+            self.pairing_card,
+            text="Or tap Search for PC on your phone.",
             font=t.font("label", 11),
             text_color=t.TEXT_TERTIARY,
             anchor="w",
-            justify="left",
-            wraplength=WIDTH - 2 * t.PAD - 2 * t.LG,
-        ).pack(fill="x", pady=(t.XS, 0))
+        ).pack(fill="x", pady=(t.SM, 0))
 
-        actions = ctk.CTkFrame(inner, fg_color="transparent")
-        actions.pack(fill="x", pady=(t.MD, 0))
+        self._qr_frame = ctk.CTkFrame(self.pairing_card, fg_color="transparent")
 
-        self.copy_btn = self._card_button(actions, "Copy address", self._copy_ip, width=118)
-        self.copy_btn.pack(side="left")
+    # -- settings -------------------------------------------------------- #
 
-        self.qr_btn = self._card_button(actions, "Show QR", self._toggle_qr, width=92)
-        self.qr_btn.pack(side="left", padx=(t.SM, 0))
+    def _build_settings(self):
+        block = ctk.CTkFrame(self.root, fg_color="transparent")
+        block.pack(fill="x", padx=t.PAD, pady=(t.LG, 0))
 
-        self._qr_frame = ctk.CTkFrame(inner, fg_color="transparent")
+        group = card(block)
+        group.pack(fill="x")
 
-    # -- output ---------------------------------------------------------- #
+        output_row = ctk.CTkFrame(group, fg_color="transparent")
+        output_row.pack(fill="x", padx=t.MD, pady=(t.SM + 2, t.SM))
 
-    def _build_output(self):
-        block = self._section(pady=(t.XL, 0))
-
-        field_label(block, "Send audio to").pack(fill="x", pady=(0, t.XS))
+        ctk.CTkLabel(
+            output_row,
+            text="Output",
+            font=t.font("body", 13),
+            text_color=t.TEXT,
+            anchor="w",
+        ).pack(side="left")
 
         self.device_menu = ctk.CTkOptionMenu(
-            block,
+            output_row,
             values=["No devices found"],
-            height=36,
+            width=200,
+            height=28,
             corner_radius=t.RADIUS,
             font=t.font("body", 12),
             dropdown_font=t.font("body", 12),
-            fg_color=t.CARD_HOVER,
-            button_color=t.CARD_HOVER,
-            button_hover_color=t.SURFACE1,
+            fg_color=t.CONTROL,
+            button_color=t.CONTROL,
+            button_hover_color=t.CONTROL_HOVER,
             text_color=t.TEXT,
             dropdown_fg_color=t.CARD,
             dropdown_hover_color=t.CARD_HOVER,
             dropdown_text_color=t.TEXT,
             command=self._on_device_selected,
         )
-        self.device_menu.pack(fill="x")
+        self.device_menu.pack(side="right")
+
+        separator(group).pack(fill="x", padx=t.MD)
+
+        volume_row = ctk.CTkFrame(group, fg_color="transparent")
+        volume_row.pack(fill="x", padx=t.MD, pady=(t.SM, t.SM + 2))
+
+        ctk.CTkLabel(
+            volume_row,
+            text="Volume",
+            font=t.font("body", 13),
+            text_color=t.TEXT,
+            anchor="w",
+        ).pack(side="left")
+
+        self.volume_label = ctk.CTkLabel(
+            volume_row,
+            text="100%",
+            font=t.font("label", 11),
+            text_color=t.TEXT_SECONDARY,
+            width=38,
+            anchor="e",
+        )
+        self.volume_label.pack(side="right")
+
+        self.volume_slider = ctk.CTkSlider(
+            volume_row,
+            from_=0,
+            to=200,
+            number_of_steps=200,
+            width=160,
+            height=16,
+            corner_radius=3,
+            fg_color=t.CONTROL_HOVER,
+            progress_color=t.ACCENT,
+            button_color=t.ACCENT,
+            button_hover_color=t.ACCENT_HOVER,
+            command=self._on_volume_changed,
+        )
+        self.volume_slider.pack(side="right", padx=(0, t.MD))
+        self.volume_slider.set(100)
 
         self.device_note = ctk.CTkLabel(
             block,
@@ -227,39 +273,9 @@ class MainWindow:
             text_color=t.TEXT_TERTIARY,
             anchor="w",
             justify="left",
-            wraplength=WIDTH - 2 * t.PAD,
+            wraplength=CONTENT,
         )
         self.device_note.pack(fill="x", pady=(t.SM, 0))
-
-        volume_row = ctk.CTkFrame(block, fg_color="transparent")
-        volume_row.pack(fill="x", pady=(t.LG, 0))
-
-        field_label(volume_row, "Volume").pack(side="left")
-
-        self.volume_label = ctk.CTkLabel(
-            volume_row,
-            text="100%",
-            font=t.font("label", 11),
-            text_color=t.TEXT_SECONDARY,
-        )
-        self.volume_label.pack(side="right")
-
-        self.volume_slider = ctk.CTkSlider(
-            block,
-            from_=0,
-            to=200,
-            number_of_steps=200,
-            height=16,
-            button_length=0,
-            corner_radius=3,
-            fg_color=t.CARD_HOVER,
-            progress_color=t.ACCENT,
-            button_color=t.TEXT,
-            button_hover_color=t.ACCENT_HOVER,
-            command=self._on_volume_changed,
-        )
-        self.volume_slider.pack(fill="x", pady=(t.SM, 0))
-        self.volume_slider.set(100)
 
     # -- footer ---------------------------------------------------------- #
 
@@ -267,24 +283,23 @@ class MainWindow:
         footer = ctk.CTkFrame(self.root, fg_color="transparent")
         footer.pack(side="bottom", fill="x", padx=t.PAD, pady=(0, t.LG))
 
-        rule = hairline(self.root)
-        rule.pack(side="bottom", fill="x", padx=t.PAD, pady=(0, t.LG))
-
         self._link_button(footer, "Audio setup", self._on_show_setup).pack(side="left")
         self._link_button(footer, "Quit", self._on_close).pack(side="right")
 
-    def _card_button(self, parent, text: str, command, width: int = 100) -> ctk.CTkButton:
-        """Filled, quiet. Nothing on this window shouts."""
+        hairline(self.root).pack(side="bottom", fill="x", padx=t.PAD, pady=(0, t.MD))
+
+    def _icon_button(self, parent, text: str, command) -> ctk.CTkButton:
+        """A small, quiet action beside the address field."""
         return ctk.CTkButton(
             parent,
             text=text,
-            width=width,
-            height=32,
+            width=52,
+            height=26,
             corner_radius=t.RADIUS,
             font=t.font("label", 11),
-            fg_color=t.CARD_HOVER,
-            hover_color=t.SURFACE1,
-            text_color=t.TEXT,
+            fg_color=t.CONTROL,
+            hover_color=t.CONTROL_HOVER,
+            text_color=t.TEXT_SECONDARY,
             command=command,
         )
 
@@ -297,7 +312,7 @@ class MainWindow:
             corner_radius=t.RADIUS,
             font=t.font("label", 11),
             fg_color="transparent",
-            hover_color=t.CARD,
+            hover_color=t.CARD_HOVER,
             text_color=t.TEXT_SECONDARY,
             command=command,
         )
@@ -324,7 +339,7 @@ class MainWindow:
             self._qr_frame.pack_forget()
             for child in self._qr_frame.winfo_children():
                 child.destroy()
-            self.qr_btn.configure(text="Show QR")
+            self.qr_btn.configure(text="QR")
             self._qr_visible = False
             self._resize_window()
             return
@@ -332,11 +347,11 @@ class MainWindow:
         image = self._render_qr()
         if image is None:
             self.device_note.configure(
-                text="No address yet, so there is nothing to scan.", text_color=t.HOT
+                text="No address yet, so there is nothing to scan.", text_color=t.WARN
             )
             return
 
-        holder = ctk.CTkFrame(self._qr_frame, fg_color=t.TEXT, corner_radius=t.RADIUS)
+        holder = ctk.CTkFrame(self._qr_frame, fg_color="#FFFFFF", corner_radius=t.RADIUS_LG)
         holder.pack(anchor="w")
         ctk.CTkLabel(holder, image=image, text="").pack(padx=10, pady=10)
 
@@ -349,7 +364,7 @@ class MainWindow:
         ).pack(fill="x", pady=(t.SM, 0))
 
         self._qr_frame.pack(fill="x", pady=(t.MD, 0))
-        self.qr_btn.configure(text="Hide QR")
+        self.qr_btn.configure(text="Hide")
         self._qr_visible = True
         self._resize_window()
 
@@ -365,9 +380,10 @@ class MainWindow:
             qr.add_data(f"meomic://{self.local_ip}:{self.port}")
             qr.make(fit=True)
 
-            # Dark modules on a light field so phone cameras still lock on,
-            # but both values come from the palette.
-            img = qr.make_image(fill_color=t.WINDOW, back_color=t.TEXT).convert("RGB")
+            # Always black on white, in both appearances: a scanner needs the
+            # contrast, and a QR that fails to read is not a design decision
+            # worth having.
+            img = qr.make_image(fill_color="#000000", back_color="#FFFFFF").convert("RGB")
             img = img.resize((132, 132), Image.Resampling.NEAREST)
 
             self._qr_image = ctk.CTkImage(light_image=img, dark_image=img, size=(132, 132))
@@ -384,7 +400,7 @@ class MainWindow:
             self.root.clipboard_clear()
             self.root.clipboard_append(f"{self.local_ip}:{self.port}")
             self.copy_btn.configure(text="Copied")
-            self.root.after(1400, lambda: self.copy_btn.configure(text="Copy address"))
+            self.root.after(1400, lambda: self.copy_btn.configure(text="Copy"))
 
     def _on_device_selected(self, choice: str):
         if self.on_device_change and self.devices:
@@ -502,7 +518,10 @@ class MainWindow:
         return next((d for d in self.devices if d["id"] == self.selected_device), None)
 
     def _update_device_note(self):
-        """Say what this choice means, in the user's words - not the driver's."""
+        """Say what this choice means, in the user's words - not the driver's.
+
+        Silent when the route is fine: the window should not narrate success.
+        """
         if not self.device_note:
             return
 
@@ -510,18 +529,18 @@ class MainWindow:
 
         if current is None:
             self.device_note.configure(
-                text="Pick a virtual audio device so call apps can hear your phone.",
-                text_color=t.TEXT_TERTIARY,
+                text="Choose a virtual audio device so call apps can hear you.",
+                text_color=t.WARN,
             )
         elif current["is_virtual"]:
             self.device_note.configure(
-                text="Ready - choose CABLE Output as your microphone in Discord, Zoom, or Meet.",
-                text_color=t.TEXT_SECONDARY,
+                text=f"Pick {current['name']} as your microphone in Discord, Zoom or Meet.",
+                text_color=t.TEXT_TERTIARY,
             )
         else:
             self.device_note.configure(
-                text="This plays out loud. No app can use it as a microphone.",
-                text_color=t.HOT,
+                text=f"{current['name']} plays out loud - apps can't use it as a mic.",
+                text_color=t.WARN,
             )
 
     def update_status(self, connected: bool, client_ip: Optional[str] = None):
@@ -538,21 +557,23 @@ class MainWindow:
         if self.voice:
             self.voice.set_connected(connected)
 
-        # Waiting asks a question the pairing card answers; live does not.
-        if self.pairing_card:
-            if connected and self.pairing_card.winfo_ismapped():
-                self.pairing_card.pack_forget()
-            elif not connected and not self.pairing_card.winfo_ismapped():
-                self.pairing_card.pack(
-                    fill="x", padx=t.PAD, pady=(t.XL, 0), after=self._voice_anchor()
-                )
+        # Waiting asks a question the address field answers; live does not.
+        # And a waveform with nothing to meter is noise, so it goes the other
+        # way: exactly one of the two is on screen at any time.
+        wanted = "live" if connected else "waiting"
+        if self.pairing_card and self.voice_block and self._shape != wanted:
+            self.pairing_card.pack_forget()
+            self.voice_block.pack_forget()
+            shown = self.voice_block if connected else self.pairing_card
+            shown.pack(fill="x", padx=t.PAD, pady=(t.LG, 0), after=self._status_anchor())
+            self._shape = wanted
 
         self._update_status_text()
         self._resize_window()
 
-    def _voice_anchor(self):
-        """The pairing card belongs directly under the voice bar."""
-        return self.voice.master if self.voice else None
+    def _status_anchor(self):
+        """Both shapes sit directly under the status line."""
+        return self.status_dot.master if self.status_dot else None
 
     def _update_status_text(self):
         if not self.status_headline or not self.status_detail:
@@ -563,14 +584,14 @@ class MainWindow:
             device = self._current_device()
             where = self.client_ip or "your phone"
             if device and device["is_virtual"]:
-                detail = f"Arriving from {where} and going into {device['name']}."
+                detail = f"From {where} · {device['name']}"
             else:
-                detail = f"Arriving from {where}."
+                detail = f"From {where}"
             self.status_detail.configure(text=detail, text_color=t.TEXT_SECONDARY)
         else:
             self.status_headline.configure(text="Waiting for your phone")
             if self.local_ip:
-                detail = "Open Meo Mic on your phone - it will find this PC."
+                detail = "Open Meo Mic on your phone - it'll find this PC."
             else:
                 detail = "Connect this PC to Wi-Fi first."
             self.status_detail.configure(text=detail, text_color=t.TEXT_SECONDARY)
@@ -584,7 +605,7 @@ class MainWindow:
         self.update_level_db(db)
 
     def update_level_db(self, db: float):
-        """Feed the voice bar peak dBFS."""
+        """Feed the waveform peak dBFS."""
         if self.voice:
             self.voice.set_db(db)
 
