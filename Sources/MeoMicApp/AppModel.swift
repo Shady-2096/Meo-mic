@@ -6,12 +6,18 @@ import MeoMicCore
 @MainActor
 final class AppModel: ObservableObject {
     static let port: UInt16 = 48_888
+    static let waveformSamples = 58
+    private static let floorDB = -60.0
 
     @Published private(set) var clientAddress: String?
     @Published private(set) var devices: [AudioDevice] = []
     @Published var selectedDeviceUID: String?
     @Published var gain = 1.0
     @Published private(set) var displayDB = -60.0
+    /// A rolling ~2s window of levels, normalised to 0...1 and oldest-first,
+    /// for the waveform to draw. Held here rather than in the view so it
+    /// survives the window closing and reopening.
+    @Published private(set) var waveform = [Double](repeating: 0, count: AppModel.waveformSamples)
     @Published private(set) var packetsLost = 0
     @Published private(set) var errorMessage: String?
     @Published var showsSetup = false
@@ -53,31 +59,34 @@ final class AppModel: ObservableObject {
         isConnected ? "Your phone is live" : "Waiting for your phone"
     }
 
+    /// Written to fit one line in a 360pt window. The middle dot is the
+    /// platform's own way of joining two facts without a sentence.
     var statusDetail: String {
         if isConnected {
+            let from = clientAddress ?? "your phone"
             if let device = selectedDevice, device.isVirtual {
-                return "Arriving from \(clientAddress ?? "your phone") and going into \(device.name)."
+                return "From \(from) · \(device.name)"
             }
-            return "Arriving from \(clientAddress ?? "your phone")."
+            return "From \(from)"
         }
         if localAddress == nil {
             return "Connect this Mac to Wi-Fi first."
         }
-        return "Open Meo Mic on your phone — it will find this Mac."
+        return "Open Meo Mic on your phone — it’ll find this Mac."
     }
 
     var pairingHint: String {
-        "Tap Search for PC on your phone, or scan the code."
+        "Or tap Search for PC on your phone."
     }
 
     var routeMessage: String {
         guard let device = selectedDevice else {
-            return "Pick a virtual audio device so call apps can hear your phone."
+            return "Choose a virtual audio device so call apps can hear you."
         }
         if device.isVirtual {
-            return "Ready — choose \(device.name) as your microphone in Discord, Zoom, or Meet."
+            return "Pick \(device.name) as your microphone in Discord, Zoom or Meet."
         }
-        return "This plays out loud. No app can use it as a microphone."
+        return "\(device.name) plays out loud — apps can’t use it as a mic."
     }
 
     // MARK: - Lifecycle
@@ -187,6 +196,14 @@ final class AppModel: ObservableObject {
         } else {
             displayDB = max(targetDB, displayDB - 26 / 30)
         }
+
+        // The waveform scrolls off the leading edge; when nothing is connected
+        // it drains to a flat line rather than freezing on the last sound.
+        let normalised = isConnected
+            ? max(0, min(1, (displayDB - Self.floorDB) / -Self.floorDB))
+            : 0
+        waveform.removeFirst()
+        waveform.append(normalised)
 
         receiver.currentStats { [weak self] stats in
             Task { @MainActor in self?.packetsLost = stats.packetsLost }

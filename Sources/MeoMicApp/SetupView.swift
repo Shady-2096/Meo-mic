@@ -2,83 +2,58 @@ import AppKit
 import MeoMicCore
 import SwiftUI
 
+/// The one-time job: install a virtual device so call apps have something to
+/// listen to. Shaped as a standard Mac sheet — title, explanation, numbered
+/// steps, a confirming button on the trailing edge.
 struct SetupView: View {
     @ObservedObject var model: AppModel
     @StateObject private var setup = SetupModel()
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            header
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Set Up Audio")
+                    .font(.system(.title2, weight: .semibold))
+                    .foregroundStyle(Palette.label)
 
-            Text("macOS has no built-in way for an app to appear as a microphone, so Meo Mic needs a virtual audio device to carry your phone’s voice into Discord, Zoom, Meet, or OBS.")
-                .font(.uiBody)
-                .foregroundStyle(Palette.textSecondary)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.top, 12)
+                Text("macOS has no built-in way for an app to appear as a microphone, so Meo Mic needs a virtual audio device to carry your phone’s voice into Discord, Zoom, Meet, or OBS.")
+                    .font(.supporting)
+                    .foregroundStyle(Palette.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
 
-            stepsCard
-                .padding(.top, 20)
+            Group_ {
+                SetupStep(
+                    number: 1,
+                    title: "Meo Mic downloads BlackHole 2ch",
+                    detail: "Straight from existential.audio. Nothing is bundled or repackaged."
+                )
+                RowSeparator()
+                SetupStep(
+                    number: 2,
+                    title: "macOS checks it and asks your permission",
+                    detail: "Meo Mic verifies Apple’s signature first, then Existential Audio’s own installer asks for your administrator password. Meo Mic never sees it."
+                )
+                RowSeparator()
+                SetupStep(
+                    number: 3,
+                    title: "Pick BlackHole as your mic",
+                    detail: "Meo Mic selects it here automatically. Choose it inside your call app."
+                )
+            }
 
             statusArea
-                .padding(.top, 18)
-
-            actions
-                .padding(.top, 18)
 
             manualSteps
-        }
-        .padding(26)
-        .frame(width: 460)
-        .background(Palette.window)
-        .preferredColorScheme(.dark)
-    }
 
-    private var header: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text("Set up your audio route")
-                .font(.status)
-                .foregroundStyle(Palette.text)
-            Spacer()
-            Button {
-                setup.cancel()
-                dismiss()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 12, weight: .medium))
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(Palette.textTertiary)
-            .accessibilityLabel("Close")
-        }
-    }
+            Divider()
 
-    private var stepsCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            SetupStep(
-                number: "1",
-                title: "Meo Mic downloads BlackHole 2ch",
-                detail: "Straight from existential.audio. Nothing is bundled or repackaged."
-            )
-            SetupStep(
-                number: "2",
-                title: "macOS checks it and asks your permission",
-                detail: "Meo Mic verifies Apple’s signature first, then Existential Audio’s own installer asks for your administrator password. Meo Mic never sees it."
-            )
-            SetupStep(
-                number: "3",
-                title: "Pick BlackHole as your mic",
-                detail: "Meo Mic selects it here automatically. Choose it inside your call app."
-            )
+            actions
         }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Palette.card)
-        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .stroke(Palette.border, lineWidth: 1)
-        }
+        .padding(20)
+        .frame(width: 420)
+        .background(WindowMaterial().ignoresSafeArea())
     }
 
     @ViewBuilder
@@ -88,101 +63,102 @@ struct SetupView: View {
             EmptyView()
 
         case let .working(message, fraction):
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 6) {
                 if let fraction {
                     ProgressView(value: fraction)
-                        .tint(Palette.accent)
                 } else {
-                    ProgressView()
-                        .progressViewStyle(.linear)
-                        .tint(Palette.accent)
+                    ProgressView().progressViewStyle(.linear)
                 }
                 Text(message)
-                    .font(.uiLabel)
-                    .foregroundStyle(Palette.textSecondary)
+                    .font(.caption)
+                    .foregroundStyle(Palette.secondary)
             }
 
         case let .failed(message, _):
-            Notice(icon: "exclamationmark.triangle.fill", tint: Palette.error, text: message)
+            InlineNote(
+                symbol: "exclamationmark.triangle.fill",
+                tint: Palette.error,
+                message: message
+            )
 
         case let .finished(deviceName):
-            Notice(
-                icon: "checkmark.circle.fill",
+            InlineNote(
+                symbol: "checkmark.circle.fill",
                 tint: Palette.live,
-                text: "\(deviceName) is installed and selected."
+                message: "\(deviceName) is installed and selected."
             )
         }
     }
 
+    private var manualSteps: some View {
+        DisclosureGroup(isExpanded: $setup.showsManualSteps) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("1. Download BlackHole 2ch from existential.audio.\n2. Open the downloaded .pkg and follow the installer.\n3. Come back here and press Re-check.")
+                    .font(.caption)
+                    .foregroundStyle(Palette.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Button("Open BlackHole Website") {
+                    NSWorkspace.shared.open(BlackHoleInstaller.downloadPageURL)
+                }
+                .controlSize(.small)
+
+                Text("BlackHole is free, open-source software by Existential Audio. Meo Mic does not bundle or modify it.")
+                    .font(.caption)
+                    .foregroundStyle(Palette.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.top, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } label: {
+            Text("Install manually instead")
+                .font(.caption)
+                .foregroundStyle(Palette.secondary)
+        }
+    }
+
+    /// Cancel on the left, the confirming action last on the right — the
+    /// arrangement every Mac sheet uses.
     @ViewBuilder
     private var actions: some View {
         HStack(spacing: 10) {
-            switch setup.phase {
-            case .idle:
-                Button("Install BlackHole") { startInstall() }
-                    .buttonStyle(.borderedProminent)
-                    .tint(Palette.accent)
-                    .foregroundStyle(Palette.window)
-
-            case .working:
-                Button("Cancel") { setup.cancel() }
-                    .buttonStyle(.bordered)
-
-            case let .failed(_, canRetry):
-                if canRetry {
-                    Button("Try again") { startInstall() }
-                        .buttonStyle(.borderedProminent)
-                        .tint(Palette.accent)
-                        .foregroundStyle(Palette.window)
-                }
-
-            case .finished:
-                Button("Done") { dismiss() }
-                    .buttonStyle(.borderedProminent)
-                    .tint(Palette.accent)
-                    .foregroundStyle(Palette.window)
-            }
-
             if !setup.isWorking {
                 Button("Re-check") {
                     model.refreshDevices()
                     if model.hasVirtualDevice { dismiss() }
                 }
-                .buttonStyle(.bordered)
             }
 
             Spacer()
-        }
-        .controlSize(.large)
-    }
 
-    private var manualSteps: some View {
-        DisclosureGroup(isExpanded: $setup.showsManualSteps) {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("1. Download BlackHole 2ch from existential.audio.\n2. Open the downloaded .pkg and follow the installer.\n3. Come back here and press Re-check.")
-                    .font(.uiLabel)
-                    .foregroundStyle(Palette.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                Button("Open BlackHole website") {
-                    NSWorkspace.shared.open(BlackHoleInstaller.downloadPageURL)
-                }
-                .buttonStyle(.bordered)
-
-                Text("BlackHole is free, open-source software by Existential Audio. Meo Mic does not bundle or modify it.")
-                    .font(.uiLabel)
-                    .foregroundStyle(Palette.textTertiary)
-                    .fixedSize(horizontal: false, vertical: true)
+            Button("Close") {
+                setup.cancel()
+                dismiss()
             }
-            .padding(.top, 10)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        } label: {
-            Text("Install manually instead")
-                .font(.uiLabel)
-                .foregroundStyle(Palette.textSecondary)
+            .keyboardShortcut(.cancelAction)
+
+            switch setup.phase {
+            case .idle:
+                Button("Install BlackHole") { startInstall() }
+                    .buttonStyle(.borderedProminent)
+                    .keyboardShortcut(.defaultAction)
+
+            case .working:
+                Button("Cancel") { setup.cancel() }
+
+            case let .failed(_, canRetry):
+                if canRetry {
+                    Button("Try Again") { startInstall() }
+                        .buttonStyle(.borderedProminent)
+                        .keyboardShortcut(.defaultAction)
+                }
+
+            case .finished:
+                Button("Done") { dismiss() }
+                    .buttonStyle(.borderedProminent)
+                    .keyboardShortcut(.defaultAction)
+            }
         }
-        .tint(Palette.textTertiary)
-        .padding(.top, 20)
     }
 
     private func startInstall() {
@@ -192,51 +168,33 @@ struct SetupView: View {
     }
 }
 
-private struct Notice: View {
-    let icon: String
-    let tint: Color
-    let text: String
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: icon)
-                .font(.system(size: 12))
-                .foregroundStyle(tint)
-            Text(text)
-                .font(.uiLabel)
-                .foregroundStyle(Palette.textSecondary)
-                .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 0)
-        }
-        .padding(14)
-        .background(tint.opacity(0.1))
-        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-    }
-}
-
 private struct SetupStep: View {
-    let number: String
+    let number: Int
     let title: String
     let detail: String
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Text(number)
-                .font(.uiLabel)
+        HStack(alignment: .top, spacing: 10) {
+            Text("\(number)")
+                .font(.system(size: 11, weight: .semibold))
                 .monospacedDigit()
-                .foregroundStyle(Palette.textSecondary)
-                .frame(width: 24, height: 24)
-                .background(Palette.control)
-                .clipShape(Circle())
-            VStack(alignment: .leading, spacing: 3) {
+                .foregroundStyle(Palette.secondary)
+                .frame(width: 20, height: 20)
+                .background(Circle().fill(Palette.controlFill))
+
+            VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Palette.text)
+                    .font(.system(.subheadline, weight: .medium))
+                    .foregroundStyle(Palette.label)
                 Text(detail)
-                    .font(.uiLabel)
-                    .foregroundStyle(Palette.textTertiary)
+                    .font(.caption)
+                    .foregroundStyle(Palette.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
+
+            Spacer(minLength: 0)
         }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
     }
 }

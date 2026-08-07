@@ -38,16 +38,24 @@ corner of the screen for the length of a call.
 - **Local network only.** No relay, no remote viewing, no telemetry.
 - **Single maintainer**, limited coding experience, heavy AI assistance. Code
   and design must stay legible and conventional enough to be maintained.
-- **Three platforms share one identity**: Android (Compose), Windows
-  (CustomTkinter), macOS (SwiftUI). The desktop apps must read as the same
-  product as the phone app.
+- **Three platforms, one product, not one skin**: Android (Compose), Windows
+  (CustomTkinter), macOS (SwiftUI). Shared naming, copy and behaviour; each
+  desktop app is native to its own platform first. Superseded the earlier goal
+  of visually identical desktop windows, which is what pushed the Mac app into
+  a hand-rolled palette.
 
 ## Brand commitments
 
-- Catppuccin Mocha is the palette across all three apps. Kept.
-- Dark interface. Chosen from the use scene, not from category habit: the
-  window sits beside a call or streaming app, usually dark, often in a dim
-  room at night, and its job is to be glanceable in peripheral vision.
+- Catppuccin Mocha is the palette on Windows and Android. Kept there.
+- **macOS uses the platform's own colours and follows the system appearance**,
+  in light and dark. Confirmed 2026-08-07, replacing the earlier dark-only,
+  Mocha-everywhere commitment. The reasoning that produced dark-only — the
+  window sits beside a call app in a dim room — turned out to argue for
+  matching whatever the rest of that person's Mac is doing, and a hand-rolled
+  dark-only palette also forfeits the user's accent colour and reads as a
+  cross-platform app wearing a Mac costume.
+- **The Mac app's craft bar is Raycast, CleanShot X and Bartender**: a compact
+  vibrant utility panel, not a settings window. Confirmed 2026-08-07.
 - The app name is "Meo Mic", set in sentence case.
 
 ## Assumptions (inferred, not confirmed)

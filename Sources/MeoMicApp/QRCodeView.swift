@@ -14,13 +14,19 @@ struct QRCodeView: View {
             } else {
                 Image(systemName: "qrcode")
                     .font(.system(size: 48, weight: .ultraLight))
-                    .foregroundStyle(Palette.textTertiary)
+                    .foregroundStyle(Palette.tertiary)
             }
         }
         .frame(width: 160, height: 160)
         .padding(14)
-        .background(Palette.text)
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        // Always white, in both appearances: a scanner needs the contrast, and
+        // a QR code that fails to read is not a design decision worth having.
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: Metrics.groupRadius, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: Metrics.groupRadius, style: .continuous)
+                .strokeBorder(Palette.groupStroke, lineWidth: 1)
+        }
     }
 
     private var image: NSImage? {

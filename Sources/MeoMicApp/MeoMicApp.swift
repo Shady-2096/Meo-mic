@@ -10,6 +10,9 @@ struct MeoMicApplication: App {
             MainView(model: model)
                 .onAppear { model.start() }
         }
+        // Hidden title bar: the window is a panel, and the material runs to
+        // the top edge behind the traffic lights the way a Mac utility's does.
+        .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
         .commands {
             CommandGroup(replacing: .newItem) {}
