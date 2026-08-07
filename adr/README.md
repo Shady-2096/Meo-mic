@@ -23,6 +23,7 @@ they are open questions with the cost of leaving them open written down.
 | [0003](0003-windows-registration-scope.md) | `HKCU` or `HKLM` for the MF source? | **Blocked** — needs the Windows probe run |
 | [0004](0004-macos-distribution-reality.md) | How macOS Camera can be distributed with no paid account | **Accepted** — measured 2026-08-07 |
 | [0005](0005-first-desktop-platform.md) | Which desktop platform finishes first | **Accepted** — follows from 0004 |
+| [0006](0006-windows-frame-bridge.md) | Windows frame bridge: shared memory, one writer, N readers | **Accepted** (design) — core measured on macOS; one sub-question open |
 
 ## Still owed before the Milestone 0 gate closes
 
@@ -37,9 +38,12 @@ probe that has not run:
 - **macOS frame bridge.** Exact IOSurface pool shape and wire layout (§8.3).
   Blocked behind ADR 0004 — there is no point specifying a bridge to an
   extension that cannot be installed.
-- **Windows frame bridge.** Shared-texture or shared-memory layout read by
-  both camera backends (§9.3). Needs ADR 0002 first, because the answer
-  changes whether one reader or two must be supported.
+~~**Windows frame bridge.**~~ Written as [ADR 0006](0006-windows-frame-bridge.md).
+It did not need ADR 0002 after all: a bridge built for N readers is a strict
+superset of one built for a single reader and costs nothing extra, so the
+dependency was dissolved rather than waited on. One sub-question — which
+namespace the shared section lives in — is open and named there, and the
+existing Windows probe run can answer it.
 
 ## Format
 
